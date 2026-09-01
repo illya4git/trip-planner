@@ -1,0 +1,18 @@
+# Operating System Junk
+.DS_Store
+Thumbs.db
+
+# Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies & Build Outputs (if using Node/Gulp/Webpack)
+node_modules/
+dist/
+build/
+
+# Environment Variables & Logs
+.env
+*.log
