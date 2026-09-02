@@ -1,0 +1,90 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-size: 1.1rem;
+    font-family: system-ui, sans-serif;
+    margin: 30px;
+    line-height: 1.4;
+    color: #222;
+}
+
+body::before {
+    content: "";
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: -1;
+    background: linear-gradient(45deg, #ffeaa7, #81ecec);
+}
+
+
+header {
+    width: max-content;
+    margin: 0 auto;
+    text-align: center;
+}
+
+header > h1 {
+    color: white;
+    font-style: italic;
+    text-decoration: underline;
+    text-underline-offset: -80%;
+    text-shadow:
+            -1px -1px 0 red,
+            1px -1px 0 cyan,
+            -1px  1px 0 #000,
+            1px  1px 0 #000;
+}
+
+nav > a {
+    margin-right: 20px;
+}
+
+
+main {
+    max-width: 1920px;
+    margin: 0 auto;
+}
+
+.card {
+    overflow: hidden;
+    width: 33%;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, .05);
+}
+
+.card > img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+.card > div {
+    padding: 14px;
+}
+
+
+aside > ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+aside > ul > li {
+    padding: 7px 14px;
+    border-bottom: 1px solid #222;
+}
+
+
+footer {
+    width: max-content;
+    margin: 0 auto;
+    font-size: .75rem;
+    font-style: italic;
+}
