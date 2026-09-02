@@ -24,12 +24,20 @@ body::before {
 
 
 header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     width: max-content;
+    max-width: 100%;
     margin: 0 auto;
+    row-gap: 10px;
+    column-gap: 30px;
     text-align: center;
 }
 
 header > h1 {
+    margin: 0;
+    line-height: 1;
     color: white;
     font-style: italic;
     text-decoration: underline;
@@ -41,19 +49,32 @@ header > h1 {
             1px  1px 0 #000;
 }
 
+nav {
+    display: flex;
+    gap: 15px;
+}
+
 nav > a {
-    margin-right: 20px;
+    color: #222;
+    text-wrap: nowrap;
 }
 
 
-main {
+.wrap {
+    display: grid;
     max-width: 1920px;
     margin: 0 auto;
+    gap: 30px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
 }
 
 .card {
     overflow: hidden;
-    width: 33%;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     background: rgba(255, 255, 255, .05);
@@ -87,4 +108,13 @@ footer {
     margin: 0 auto;
     font-size: .75rem;
     font-style: italic;
+}
+
+@media (min-width: 600px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+    .wrap { grid-template-columns: 3fr 1fr; }
+    .cards { grid-template-columns: repeat(3, 1fr); }
 }

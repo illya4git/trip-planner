@@ -7,56 +7,60 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header>
-    <h1>Планувальник подорожей</h1>
-    <nav>
-        <a href="#trip-list">Мої подорожі</a>
-        <a href="#trip-details">Деталі подорожі</a>
-    </nav>
-</header>
-<main>
-    <section id="trip-list">
-        <h2>Мої подорожі</h2>
-        <article class="card">
-            <img width="240" height="135" src="assets/img/vienna.jpg" alt="Vienna">
-            <div>
-                <h3>Відень (06.08.26)</h3>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-            </div>
-        </article>
-        <article class="card">
-            <img width="240" height="135" src="assets/img/prague.jpg" alt="Prague">
-            <div>
-                <h3>Відень (06.08.26)</h3>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-            </div>
-        </article>
-        <article class="card">
-            <img width="240" height="135" src="assets/img/budapest.jpg" alt="Budapest">
-            <div>
-                <h3>Відень (06.08.26)</h3>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-            </div>
-        </article>
-    </section>
-    <section id="trip-details">
-        <h2>Деталі обраної подорожі: Прага (08.08.26)</h2>
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-    </section>
-</main>
-<aside>
-    <h2>Бюджет подорожі</h2>
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-    <ul>
-        <li>Квитки: 120$</li>
-        <li>Проживання: 300$</li>
-        <li>Дозвілля: 180$</li>
-        <li><strong>Загалом: 600$</strong></li>
-    </ul>
-</aside>
-<footer>
-    <p>Ілля Кліменко &copy; 2026</p>
-</footer>
-<script src="js/app.js"></script>
+    <header>
+        <h1>Планувальник подорожей</h1>
+        <nav>
+            <a href="#trip-list">Мої подорожі</a>
+            <a href="#trip-details">Деталі подорожі</a>
+        </nav>
+    </header>
+    <div class="wrap">
+        <main>
+            <section id="trip-list">
+                <h2>Мої подорожі</h2>
+                <div class="cards">
+                    <article class="card">
+                        <img width="240" height="135" src="assets/img/vienna.jpg" alt="Vienna">
+                        <div>
+                            <h3>Відень (06.08.26)</h3>
+                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img width="240" height="135" src="assets/img/prague.jpg" alt="Prague">
+                        <div>
+                            <h3>Відень (06.08.26)</h3>
+                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img width="240" height="135" src="assets/img/budapest.jpg" alt="Budapest">
+                        <div>
+                            <h3>Відень (06.08.26)</h3>
+                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+            <section id="trip-details">
+                <h2>Деталі обраної подорожі: Прага (08.08.26)</h2>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            </section>
+        </main>
+        <aside>
+            <h2>Бюджет подорожі</h2>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            <ul>
+                <li>Квитки: 120$</li>
+                <li>Проживання: 300$</li>
+                <li>Дозвілля: 180$</li>
+                <li><strong>Загалом: 600$</strong></li>
+            </ul>
+        </aside>
+    </div>
+    <footer>
+        <p>Ілля Кліменко &copy; 2026</p>
+    </footer>
+    <script src="js/app.js"></script>
 </body>
 </html>
