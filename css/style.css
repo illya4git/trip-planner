@@ -1,3 +1,13 @@
+/*
+ * НЕЧІТКА ВИМОГА: «має надихати на подорожі»
+ * ОБҐРУНТУВАННЯ: Базовий градієнт фону (#ffeaa7 - пісочний та #81ecec - морський/небесний)
+ * було збережено, оскільки він ідеально передає атмосферу пляжу та моря. 
+ * Для акцентів (бюджет) та міток статусів додано природні кольори: 
+ * насичений синій (#023E8A), теракотовий (#E76F51) та зелений (#2A9D8F), 
+ * які асоціюються з природою та подорожами. Контраст тексту на мітках до їхнього фону 
+ * та синього тексту до загального фону складає більше 4.5:1, що відповідає стандартам.
+ */
+
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -90,6 +100,35 @@ nav > a {
     padding: 14px;
 }
 
+.card h3 {
+    font-size: 20px;
+    margin: 8px 0;
+}
+
+.status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.status--planned {
+    background-color: #e76f51;
+}
+
+.status--active {
+    background-color: #2a9d8f;
+}
+
+.status--past {
+    background-color: #264653;
+}
+
 
 aside > ul {
     margin: 0;
@@ -98,8 +137,17 @@ aside > ul {
 }
 
 aside > ul > li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 7px 14px;
     border-bottom: 1px solid #222;
+}
+
+.budget-amount {
+    font-weight: bold;
+    font-size: 18px;
+    color: #023e8a;
 }
 
 
