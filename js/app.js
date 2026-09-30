@@ -1,34 +1,97 @@
-console.log('app.js підключено');
-
-// Крок 4: Оголошення даних. Масив об'єктів подорожей
+// Дані з практикуму 6 + нові
 const trips = [
-    { destination: 'Відень', days: 7, budget: 23000 },
-    { destination: 'Братислава', days: 3, budget: 5000 },
-    { destination: 'Прага', days: 10, budget: 15000 }
+    {
+        destination: 'Відень',
+        days: 7,
+        budget: 23000,
+        image: 'assets/img/vienna.jpg',
+        statusText: 'Поточна',
+        statusClass: 'status--active'
+    },
+    {
+        destination: 'Будапешт',
+        days: 3,
+        budget: 5000,
+        image: 'assets/img/budapest.jpg',
+        statusText: 'Минула',
+        statusClass: 'status--past'
+    },
+    {
+        destination: 'Прага',
+        days: 10,
+        budget: 15000,
+        image: 'assets/img/prague.jpg',
+        statusText: 'Заплановано',
+        statusClass: 'status--planned'
+    }
 ];
 
-// Крок 7: Стрілкова функція, яка розраховує витрати на один день подорожі
-// Приймає об'єкт trip та повертає числове значення, округлене до цілого
+// Стрілкова функція для обчислення витрат на день
 const costPerDay = trip => Math.round(trip.budget / trip.days);
 
-// Крок 5 та 6: Обробка даних циклом та умовна класифікація
-// Перебираємо масив подорожей циклом for...of
-for (const trip of trips) {
-    // Викликаємо функцію для обчислення вартості одного дня
-    const dailyCost = costPerDay(trip);
-    let classification = '';
+// Крок 3: Вибір контейнера та підсумкового елемента з DOM
+const listContainer = document.querySelector('#trips-list');
+const tripsCountElement = document.querySelector('#trips-count');
 
-    // Класифікуємо подорож за загальним бюджетом за допомогою if/else
-    if (trip.budget <= 15000) {
-        classification = 'бюджетна';
-    } else {
-        classification = 'дорога';
-    }
-
-    // Виводимо підсумкову інформацію в консоль, використовуючи рядкові шаблони
-    console.log(`Подорож до міста ${trip.destination}:`);
-    console.log(`- Тривалість: ${trip.days} днів`);
-    console.log(`- Загальний бюджет: ${trip.budget} грн (${classification} подорож)`);
-    console.log(`- Витрати на день: ${dailyCost} грн`);
-    console.log('---------------------------');
+// Крок 2: Видалення статичної розмітки-заглушки програмно
+const placeholder = document.querySelector('.static-placeholder');
+if (placeholder) {
+    placeholder.remove();
 }
+
+// Крок 4: Функція рендеру масиву
+function renderTrips(tripsArray) {
+    listContainer.innerHTML = ''; // Очищення контейнера
+
+    tripsArray.forEach(trip => {
+        // Створення головної картки
+        const card = document.createElement('article');
+        card.classList.add('card');
+
+        // Крок 6: Додавання атрибута data-cost-per-day
+        const dailyCost = costPerDay(trip);
+        card.dataset.costPerDay = dailyCost;
+
+        // Крок 6: Умовний клас (budget або expensive)
+        if (trip.budget <= 15000) {
+            card.classList.add('card--budget');
+        } else {
+            card.classList.add('card--expensive');
+        }
+
+        // Створення зображення
+        const img = document.createElement('img');
+        img.src = trip.image;
+        img.alt = trip.destination;
+
+        // Створення div-обгортки для тексту
+        const contentWrapper = document.createElement('div');
+
+        // Створення мітки статусу з 5-го практикуму
+        const statusBadge = document.createElement('span');
+        statusBadge.classList.add('status', trip.statusClass);
+        statusBadge.textContent = trip.statusText;
+
+        // Крок 5: Створення h3 та p з даними
+        const title = document.createElement('h3');
+        title.textContent = `${trip.destination} (Деталі)`;
+
+        const details = document.createElement('p');
+        details.textContent = `${trip.days} днів, ${trip.budget} грн`;
+
+        // Крок 7: Збірка DOM-дерева (вкладання елементів один в одного)
+        contentWrapper.append(statusBadge, title, details);
+        card.append(img, contentWrapper);
+
+        // Додавання готової картки в контейнер на сторінці
+        listContainer.append(card);
+    });
+
+    // Крок 9: Оновлення підсумкового елемента поза списком
+    if (tripsCountElement) {
+        tripsCountElement.textContent = `Загальна кількість подорожей: ${tripsArray.length}`;
+    }
+}
+
+// Крок 8: Виклик функції рендеру
+renderTrips(trips);
