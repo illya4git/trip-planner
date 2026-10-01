@@ -1,51 +1,122 @@
-// Дані з практикуму 6 + нові
-const trips = [
-    {
-        destination: 'Відень',
-        days: 7,
-        budget: 23000,
-        image: 'assets/img/vienna.jpg',
-        statusText: 'Поточна',
-        statusClass: 'status--active'
-    },
-    {
-        destination: 'Будапешт',
-        days: 3,
-        budget: 5000,
-        image: 'assets/img/budapest.jpg',
-        statusText: 'Минула',
-        statusClass: 'status--past'
-    },
-    {
-        destination: 'Прага',
-        days: 10,
-        budget: 15000,
-        image: 'assets/img/prague.jpg',
-        statusText: 'Заплановано',
-        statusClass: 'status--planned'
-    }
-];
+// ===================== Практикум 10: список подорожей на Vue 3 =====================
+
+// Крок 1, 10: обрано Vue 3, бо його глобальна CDN-збірка вже містить компілятор шаблонів,
+// тож компоненти описуються звичним HTML-шаблоном прямо на сторінці - без Babel, JSX і збірки.
 
 // Мінімальний розумний бюджет на один день подорожі (грн)
 const MIN_DAILY_BUDGET = 1000;
 
-// Стрілкова функція для обчислення витрат на день
+// Стрілкова функція для обчислення витрат на день (використовують форма і секція деталей)
 const costPerDay = trip => Math.round(trip.budget / trip.days);
 
-// Вибір контейнера та підсумкового елемента з DOM
-const listContainer = document.querySelector('#trips-list');
-const tripsCountElement = document.querySelector('#trips-count');
-const detailsContent = document.querySelector('#trip-details-content');
+// Крок 4: компонент картки подорожі за варіантом 10.
+// Отримує всі дані лише через props і не звертається до глобальних змінних.
+const TripCard = {
+    props: {
+        id: { type: Number, required: true },
+        destination: { type: String, required: true },
+        days: { type: Number, required: true },
+        budget: { type: Number, required: true },
+        image: { type: String, default: '' },
+        statusText: { type: String, default: '' },
+        statusClass: { type: String, default: '' },
+        selected: { type: Boolean, default: false }
+    },
+    emits: ['select'],
+    computed: {
+        // Похідне значення варіанта: перераховується автоматично щоразу,
+        // коли змінюється budget або days, і ніде окремо не зберігається
+        costPerDay() {
+            return Math.round(this.budget / this.days);
+        },
+        // Умовний клас із практикуму 7 (budget або expensive)
+        budgetClass() {
+            return this.budget <= 15000 ? 'card--budget' : 'card--expensive';
+        }
+    },
+    // Крок 6: клік по картці лише повідомляє батьківському компоненту id через $emit,
+    // а сам стан (яку подорож обрано) змінює батьківський компонент
+    template: `
+        <article class="card"
+                 :class="[budgetClass, { 'card--selected': selected }]"
+                 :data-cost-per-day="costPerDay"
+                 @click="$emit('select', id)">
+            <img v-if="image" :src="image" :alt="destination">
+            <div>
+                <span class="status" :class="statusClass">{{ statusText }}</span>
+                <h3>{{ destination }}</h3>
+                <p>{{ days }} днів, {{ budget }} грн</p>
+                <p>Бюджет на день: <span class="budget-amount">{{ costPerDay }} грн</span></p>
+            </div>
+        </article>`
+};
 
-// Видалення статичної розмітки-заглушки програмно
-const placeholder = document.querySelector('.static-placeholder');
-if (placeholder) {
-    placeholder.remove();
-}
+const tripsApp = Vue.createApp({
+    components: { TripCard },
+    data() {
+        return {
+            // Крок 3: масив подорожей (практикум 6) тепер у реактивному стані, а не в зовнішній змінній.
+            // Кожен запис отримав унікальний id - він потрібен для :key і для події select.
+            trips: [
+                {
+                    id: 1,
+                    destination: 'Відень',
+                    days: 7,
+                    budget: 23000,
+                    image: 'assets/img/vienna.jpg',
+                    statusText: 'Поточна',
+                    statusClass: 'status--active'
+                },
+                {
+                    id: 2,
+                    destination: 'Будапешт',
+                    days: 3,
+                    budget: 5000,
+                    image: 'assets/img/budapest.jpg',
+                    statusText: 'Минула',
+                    statusClass: 'status--past'
+                },
+                {
+                    id: 3,
+                    destination: 'Прага',
+                    days: 10,
+                    budget: 15000,
+                    image: 'assets/img/prague.jpg',
+                    statusText: 'Заплановано',
+                    statusClass: 'status--planned'
+                }
+            ],
+            selectedId: null
+        };
+    },
+    computed: {
+        // Обрана подорож виводиться з selectedId, тому ніколи не розходиться з масивом
+        selectedTrip() {
+            return this.trips.find(trip => trip.id === this.selectedId) || null;
+        },
+        selectedCostPerDay() {
+            return this.selectedTrip ? costPerDay(this.selectedTrip) : 0;
+        }
+    },
+    methods: {
+        // Крок 6: батьківський компонент оновлює стан у відповідь на подію select картки
+        selectTrip(id) {
+            this.selectedId = id;
+        },
+        // Зміна тривалості обраної подорожі - costPerDay у картці перераховується сам
+        changeDays(delta) {
+            this.selectedTrip.days = Math.max(1, this.selectedTrip.days + delta);
+        },
+        // Додавання нової подорожі з форми практикуму 8 з новим унікальним id
+        addTrip(trip) {
+            const nextId = Math.max(0, ...this.trips.map(t => t.id)) + 1;
+            this.trips.push({ id: nextId, ...trip });
+        }
+    }
+}).mount('#trips-app');
 
-// Універсальна функція рендеру масиву (практикум 7, узагальнена в практикумі 9):
-// очищає контейнер і додає в нього елемент, створений функцією createItem для кожного запису.
-// Так одна й та сама логіка рендеру працює і для подорожей, і для країн з API.
+// Універсальна функція рендеру масиву (практикум 7, узагальнена в практикумі 9).
+// Після практикуму 10 нею користується лише довідка про країни.
 function renderList(container, items, createItem) {
     container.innerHTML = ''; // Очищення контейнера
 
@@ -54,67 +125,10 @@ function renderList(container, items, createItem) {
     });
 }
 
-// Створення картки подорожі (практикум 7)
-function createTripCard(trip, index) {
-    // Створення головної картки
-    const card = document.createElement('article');
-    card.classList.add('card');
-
-    // Індекс запису в масиві - потрібен для делегування кліку (практикум 8)
-    card.dataset.index = index;
-
-    // Атрибут data-cost-per-day
-    const dailyCost = costPerDay(trip);
-    card.dataset.costPerDay = dailyCost;
-
-    // Умовний клас (budget або expensive)
-    if (trip.budget <= 15000) {
-        card.classList.add('card--budget');
-    } else {
-        card.classList.add('card--expensive');
-    }
-
-    // Створення div-обгортки для тексту
-    const contentWrapper = document.createElement('div');
-
-    // Створення мітки статусу з 5-го практикуму
-    const statusBadge = document.createElement('span');
-    statusBadge.classList.add('status', trip.statusClass);
-    statusBadge.textContent = trip.statusText;
-
-    // Створення h3 та p з даними
-    const title = document.createElement('h3');
-    title.textContent = `${trip.destination}`;
-
-    const details = document.createElement('p');
-    details.textContent = `${trip.days} днів, ${trip.budget} грн`;
-
-    // Збірка DOM-дерева (вкладання елементів один в одного)
-    contentWrapper.append(statusBadge, title, details);
-
-    // Зображення додається лише тоді, коли воно є (у нових подорожей з форми його немає)
-    if (trip.image) {
-        const img = document.createElement('img');
-        img.src = trip.image;
-        img.alt = trip.destination;
-        card.append(img);
-    }
-    card.append(contentWrapper);
-
-    return card;
-}
-
-// Рендер списку подорожей та оновлення підсумкового елемента поза списком
-function renderTrips(tripsArray) {
-    renderList(listContainer, tripsArray, createTripCard);
-
-    if (tripsCountElement) {
-        tripsCountElement.textContent = `Загальна кількість подорожей: ${tripsArray.length}`;
-    }
-}
-
-// Виклик функції рендеру при завантаженні сторінки
-renderTrips(trips);
+// Крок 7: ручний DOM-рендер подорожей видалено - його замінено компонентом TripCard.
+// Прибрано функції createTripCard, renderTrips і showTripDetails, програмне видалення
+// заглушки .static-placeholder та делегований обробник кліку по #trips-list (практикуми 7-8):
+// список, лічильник, підсвічування обраної картки й деталі тепер рендерить Vue з реактивного стану.
 
 
 // ===================== Практикум 8: форма та події =====================
@@ -175,7 +189,7 @@ form.addEventListener('submit', event => {
     const days = Number(daysInput.value);
     const budget = Number(budgetInput.value);
 
-    // Крок 5: Новий об'єкт тієї самої форми, що й елементи масиву trips
+    // Крок 5: Новий об'єкт тієї самої форми, що й елементи масиву trips (id додасть Vue-застосунок)
     const newTrip = {
         destination,
         days,
@@ -184,66 +198,15 @@ form.addEventListener('submit', event => {
         statusText: 'Заплановано',
         statusClass: 'status--planned'
     };
-    trips.push(newTrip);
 
-    // Крок 6: Повторний рендер списку з оновленим масивом
-    renderTrips(trips);
+    // Крок 6: Додавання в реактивний стан - список перемальовує Vue (практикум 10),
+    // тому ручний виклик рендеру більше не потрібен
+    tripsApp.addTrip(newTrip);
 
     // Крок 7: Очищення форми та розрахунку після успішного додавання
     form.reset();
     updateCostPreview();
 });
-
-// Виведення деталей обраної подорожі в секцію #trip-details
-function showTripDetails(trip) {
-    detailsContent.innerHTML = '';
-
-    const title = document.createElement('h3');
-    title.textContent = trip.destination;
-
-    const statusBadge = document.createElement('span');
-    statusBadge.classList.add('status', trip.statusClass);
-    statusBadge.textContent = trip.statusText;
-
-    const list = document.createElement('ul');
-    list.classList.add('details-list');
-
-    const rows = [
-        ['Тривалість', `${trip.days} днів`],
-        ['Бюджет', `${trip.budget} грн`],
-        ['Бюджет на день', `${costPerDay(trip)} грн`]
-    ];
-
-    rows.forEach(([label, value]) => {
-        const item = document.createElement('li');
-        const labelSpan = document.createElement('span');
-        labelSpan.textContent = `${label}:`;
-        const valueSpan = document.createElement('span');
-        valueSpan.classList.add('budget-amount');
-        valueSpan.textContent = value;
-        item.append(labelSpan, valueSpan);
-        list.append(item);
-    });
-
-    detailsContent.append(statusBadge, title, list);
-}
-
-// Крок 9: Друга подія варіанта - клік по картці через делегування.
-// Обробник один на весь контейнер, тому працює і для карток, створених після рендеру.
-listContainer.addEventListener('click', event => {
-    const card = event.target.closest('.card');
-    if (!card) return; // Клік по порожньому місцю контейнера
-
-    const trip = trips[Number(card.dataset.index)];
-
-    // Підсвічування обраної картки
-    listContainer.querySelectorAll('.card--selected')
-        .forEach(selected => selected.classList.remove('card--selected'));
-    card.classList.add('card--selected');
-
-    showTripDetails(trip);
-});
-
 
 // ===================== Практикум 9: клієнт для API довідки про країни =====================
 

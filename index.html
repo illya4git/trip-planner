@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Планувальник подорожей</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Практикум 10, крок 2: Vue 3, глобальна збірка з CDN (без npm і збірки) -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
 </head>
 <body>
 <header>
@@ -18,26 +20,54 @@
 </header>
 <div class="wrap">
     <main>
-        <section id="trip-items">
-            <h2>Мої подорожі</h2>
-            <p id="trips-count"></p>
-            <div id="trips-list" class="cards">
-                <article class="card static-placeholder">
-                    <img src="assets/img/vienna.jpg" alt="Відень">
-                    <div>
-                        <span class="status status--planned">Заплановано</span>
-                        <h3>Відень (06.08.26)</h3>
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
-                    </div>
-                </article>
-            </div>
-        </section>
-        <section id="trip-details">
-            <h2>Деталі обраної подорожі</h2>
-            <div id="trip-details-content">
-                <p>Натисніть на картку подорожі, щоб переглянути її деталі.</p>
-            </div>
-        </section>
+        <!-- Практикум 10: ділянку списку й деталей подорожей рендерить Vue-застосунок -->
+        <div id="trips-app" v-cloak>
+            <section id="trip-items">
+                <h2>Мої подорожі</h2>
+                <p id="trips-count">Загальна кількість подорожей: {{ trips.length }}</p>
+                <div id="trips-list" class="cards">
+                    <!-- Крок 5: рендер циклом v-for з :key за унікальним id -->
+                    <trip-card
+                            v-for="trip in trips"
+                            :key="trip.id"
+                            :id="trip.id"
+                            :destination="trip.destination"
+                            :days="trip.days"
+                            :budget="trip.budget"
+                            :image="trip.image"
+                            :status-text="trip.statusText"
+                            :status-class="trip.statusClass"
+                            :selected="trip.id === selectedId"
+                            @select="selectTrip"
+                    ></trip-card>
+                </div>
+            </section>
+            <section id="trip-details">
+                <h2>Деталі обраної подорожі</h2>
+                <div id="trip-details-content">
+                    <template v-if="selectedTrip">
+                        <span class="status" :class="selectedTrip.statusClass">{{ selectedTrip.statusText }}</span>
+                        <h3>{{ selectedTrip.destination }}</h3>
+                        <ul class="details-list">
+                            <li>
+                                <span>Тривалість:</span>
+                                <span class="day-stepper">
+                                    <button type="button" @click="changeDays(-1)"
+                                            :disabled="selectedTrip.days <= 1"
+                                            aria-label="Зменшити тривалість на 1 день">−</button>
+                                    <span class="budget-amount">{{ selectedTrip.days }} днів</span>
+                                    <button type="button" @click="changeDays(1)"
+                                            aria-label="Збільшити тривалість на 1 день">+</button>
+                                </span>
+                            </li>
+                            <li><span>Бюджет:</span> <span class="budget-amount">{{ selectedTrip.budget }} грн</span></li>
+                            <li><span>Бюджет на день:</span> <span class="budget-amount">{{ selectedCostPerDay }} грн</span></li>
+                        </ul>
+                    </template>
+                    <p v-else>Натисніть на картку подорожі, щоб переглянути її деталі.</p>
+                </div>
+            </section>
+        </div>
         <section id="trip-add">
             <h2>Нова подорож</h2>
             <form id="trip-form" class="trip-form">
