@@ -7,48 +7,76 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <h1>Планувальник подорожей</h1>
-        <nav>
-            <a href="#trip-items">Мої подорожі</a>
-            <a href="#trip-details">Деталі подорожі</a>
-        </nav>
-    </header>
-    <div class="wrap">
-        <main>
-            <section id="trip-items">
-                <h2>Мої подорожі</h2>
-                <p id="trips-count"></p>
-                <div id="trips-list" class="cards">
-                    <article class="card static-placeholder">
-                        <img src="assets/img/vienna.jpg" alt="Відень">
-                        <div>
-                            <span class="status status--planned">Заплановано</span>
-                            <h3>Відень (06.08.26)</h3>
-                            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
-                        </div>
-                    </article>
+<header>
+    <h1>Планувальник подорожей</h1>
+    <nav>
+        <a href="#trip-items">Мої подорожі</a>
+        <a href="#trip-details">Деталі подорожі</a>
+        <a href="#trip-add">Нова подорож</a>
+    </nav>
+</header>
+<div class="wrap">
+    <main>
+        <section id="trip-items">
+            <h2>Мої подорожі</h2>
+            <p id="trips-count"></p>
+            <div id="trips-list" class="cards">
+                <article class="card static-placeholder">
+                    <img src="assets/img/vienna.jpg" alt="Відень">
+                    <div>
+                        <span class="status status--planned">Заплановано</span>
+                        <h3>Відень (06.08.26)</h3>
+                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+        <section id="trip-details">
+            <h2>Деталі обраної подорожі</h2>
+            <div id="trip-details-content">
+                <p>Натисніть на картку подорожі, щоб переглянути її деталі.</p>
+            </div>
+        </section>
+        <section id="trip-add">
+            <h2>Нова подорож</h2>
+            <form id="trip-form" class="trip-form">
+                <div class="form-field">
+                    <label for="destination">Напрямок</label>
+                    <input type="text" id="destination" name="destination"
+                           required pattern=".*\S.*" placeholder="Наприклад, Краків">
                 </div>
-            </section>
-            <section id="trip-details">
-                <h2>Деталі обраної подорожі: Прага (08.08.26)</h2>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-            </section>
-        </main>
-        <aside>
-            <h2>Бюджет подорожі</h2>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-            <ul>
-                <li><span>Переліт:</span> <span class="budget-amount">₴ 8 000</span></li>
-                <li><span>Проживання:</span> <span class="budget-amount">₴ 12 000</span></li>
-                <li><span>Харчування:</span> <span class="budget-amount">₴ 5 000</span></li>
-                <li><span><strong>Загалом:</strong></span> <span class="budget-amount"><strong>₴ 25 000</strong></span></li>
-            </ul>
-        </aside>
-    </div>
-    <footer>
-        <p>Ілля Кліменко &copy; 2026</p>
-    </footer>
-    <script src="js/app.js" defer></script>
+                <div class="form-field">
+                    <label for="days">Кількість днів</label>
+                    <input type="number" id="days" name="days"
+                           required min="1" step="1" placeholder="5">
+                </div>
+                <div class="form-field">
+                    <label for="budget">Бюджет, грн</label>
+                    <input type="number" id="budget" name="budget"
+                           required min="0" step="1" placeholder="12000">
+                </div>
+                <p class="form-preview">
+                    Бюджет на день: <output id="cost-preview" for="days budget">—</output>
+                </p>
+                <p id="cost-warning" class="form-warning" aria-live="polite"></p>
+                <button type="submit">Додати подорож</button>
+            </form>
+        </section>
+    </main>
+    <aside>
+        <h2>Бюджет подорожі</h2>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <ul>
+            <li><span>Переліт:</span> <span class="budget-amount">₴ 8 000</span></li>
+            <li><span>Проживання:</span> <span class="budget-amount">₴ 12 000</span></li>
+            <li><span>Харчування:</span> <span class="budget-amount">₴ 5 000</span></li>
+            <li><span><strong>Загалом:</strong></span> <span class="budget-amount"><strong>₴ 25 000</strong></span></li>
+        </ul>
+    </aside>
+</div>
+<footer>
+    <p>Ілля Кліменко &copy; 2026</p>
+</footer>
+<script src="js/app.js" defer></script>
 </body>
 </html>
