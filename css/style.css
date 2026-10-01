@@ -254,6 +254,80 @@ footer {
 }
 
 
+/* ===================== Практикум 9 ===================== */
+
+.country-form {
+    display: grid;
+    gap: 14px;
+    max-width: 480px;
+}
+
+.country-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.country-actions > button {
+    padding: 10px 20px;
+    font: inherit;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #2a9d8f;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.country-actions > button:hover {
+    background-color: #21867a;
+}
+
+.country-actions > .button--secondary {
+    background-color: #023e8a;
+}
+
+.country-actions > .button--secondary:hover {
+    background-color: #012f69;
+}
+
+/* Під час запиту кнопки заблоковані - це частина стану завантаження */
+.country-actions > button:disabled {
+    opacity: .6;
+    cursor: progress;
+}
+
+.load-status {
+    font-style: italic;
+    color: #023e8a;
+}
+
+.load-error {
+    padding: 10px 14px;
+    font-weight: bold;
+    color: #9c3d23;
+    border-left: 5px solid #e76f51;
+    background: rgba(255, 255, 255, .6);
+}
+
+.load-status:empty,
+.load-error:empty,
+#country-count:empty {
+    display: none;
+}
+
+/* Картки країн не клікабельні, на відміну від карток подорожей */
+.card--country {
+    cursor: default;
+}
+
+/* Прапори мають різні пропорції, тому вписуємо їх без обрізання */
+.card--country > img {
+    aspect-ratio: 3 / 2;
+    object-fit: contain;
+    background: rgba(255, 255, 255, .5);
+}
+
 @media (min-width: 600px) {
     .cards { grid-template-columns: repeat(2, 1fr); }
 }

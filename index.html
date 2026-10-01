@@ -13,6 +13,7 @@
         <a href="#trip-items">Мої подорожі</a>
         <a href="#trip-details">Деталі подорожі</a>
         <a href="#trip-add">Нова подорож</a>
+        <a href="#country-info">Довідка про країну</a>
     </nav>
 </header>
 <div class="wrap">
@@ -61,6 +62,24 @@
                 <p id="cost-warning" class="form-warning" aria-live="polite"></p>
                 <button type="submit">Додати подорож</button>
             </form>
+        </section>
+        <section id="country-info">
+            <h2>Довідка про країну</h2>
+            <form id="country-form" class="country-form">
+                <div class="form-field">
+                    <label for="country-query">Назва країни (англійською)</label>
+                    <input type="text" id="country-query" name="country"
+                           required pattern=".*\S.*" value="Austria" placeholder="Наприклад, Austria">
+                </div>
+                <div class="country-actions">
+                    <button type="submit">Знайти</button>
+                    <button type="button" id="country-refresh" class="button--secondary">Оновити</button>
+                </div>
+            </form>
+            <p id="country-loading" class="load-status" aria-live="polite"></p>
+            <p id="country-error" class="load-error" role="alert"></p>
+            <p id="country-count"></p>
+            <div id="country-list" class="cards"></div>
         </section>
     </main>
     <aside>
