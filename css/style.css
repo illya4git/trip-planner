@@ -127,10 +127,10 @@ main > section + section {
 }
 
 .card--budget {
-    border-left: 5px solid #2a9d8f
+    border-left: 5px solid #1f7a6f
 }
 .card--expensive {
-    border-left: 5px solid #e76f51;
+    border-left: 5px solid #b5462a;
 }
 
 .card > img {
