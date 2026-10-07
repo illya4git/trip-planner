@@ -277,7 +277,7 @@ footer > p {
 }
 
 .form-field > input:user-invalid {
-    border-color: #e76f51;
+    border-color: #b5462a;
     border-width: 2px;
 }
 
@@ -306,14 +306,14 @@ footer > p {
     font: inherit;
     font-weight: bold;
     color: #ffffff;
-    background-color: #2a9d8f;
+    background-color: #1f7a6f;
     border: none;
     border-radius: 6px;
     cursor: pointer;
 }
 
 .trip-form > button:hover {
-    background-color: #21867a;
+    background-color: #18635a;
 }
 
 
