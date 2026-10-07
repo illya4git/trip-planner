@@ -372,3 +372,138 @@ countryRefreshButton.addEventListener('click', () => {
 
 // Перше завантаження при відкритті сторінки
 loadCountry(DEFAULT_COUNTRY);
+
+// ===================== Практикум 11: маршрут подорожі в локальному сховищі =====================
+
+// Крок 1: модель даних варіанта 10 - пункт маршруту (зупинка):
+// {
+//     id: number,        // унікальний ідентифікатор, Date.now() у момент створення; далі не змінюється
+//     country: string,   // країна
+//     city: string,      // місто
+//     dateFrom: string,  // дата прибуття у форматі 'YYYY-MM-DD' (значення input type="date")
+//     dateTo: string,    // дата від'їзду у тому ж форматі
+//     notes: string      // необов'язкові нотатки
+// }
+// Дати зберігаються рядками ISO, тож їх можна порівнювати як звичайні рядки.
+
+// Ключ, під яким маршрут зберігається в localStorage
+const STOPS_STORAGE_KEY = 'tripStops';
+
+const STORAGE_WRITE_ERROR_MESSAGE = 'Не вдалося зберегти зміни маршруту. Спробуйте ще раз.';
+
+// Крок 2: збереження масиву зупинок у localStorage (лише рядки, тому JSON.stringify).
+// setItem може кинути QuotaExceededError, коли сховище переповнене.
+function saveToLocalStorage(stops) {
+    try {
+        localStorage.setItem(STOPS_STORAGE_KEY, JSON.stringify(stops));
+        return true;
+    } catch (error) {
+        console.error('Не вдалося записати маршрут у localStorage:', error);
+        return false;
+    }
+}
+
+// Крок 2: читання масиву зупинок; пошкоджені дані не «кладуть» застосунок, а дають порожній список
+function loadFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(STOPS_STORAGE_KEY);
+        const stops = raw ? JSON.parse(raw) : [];
+        return Array.isArray(stops) ? stops : [];
+    } catch (error) {
+        console.error('Пошкоджені дані маршруту в localStorage:', error);
+        return [];
+    }
+}
+
+// Порожній стан форми зупинки
+const emptyStopForm = () => ({ country: '', city: '', dateFrom: '', dateTo: '', notes: '' });
+
+// 'YYYY-MM-DD' -> 'DD.MM.YYYY' без об'єкта Date, щоб часовий пояс не зсунув день
+const formatDate = isoDate => isoDate.split('-').reverse().join('.');
+
+// Сценарій варіанта: маршрут показується відсортованим за dateFrom (за однакових - за dateTo)
+const byDateFrom = (a, b) => a.dateFrom.localeCompare(b.dateFrom) || a.dateTo.localeCompare(b.dateTo);
+
+const routeApp = Vue.createApp({
+    data() {
+        return {
+            // Маршрут відновлюється з localStorage одразу під час створення застосунку
+            stops: loadFromLocalStorage(),
+            form: emptyStopForm(),
+            editingId: null,     // id зупинки, яку зараз редагують, або null
+            storageReady: true,  // localStorage доступний синхронно
+            loading: false,
+            saving: false,
+            error: ''
+        };
+    },
+    computed: {
+        sortedStops() {
+            return [...this.stops].sort(byDateFrom);
+        },
+        isEditing() {
+            return this.editingId !== null;
+        }
+    },
+    methods: {
+        formatDate,
+        // Крок 3: запис поточного стану після кожної зміни
+        persist() {
+            this.error = saveToLocalStorage(this.stops) ? '' : STORAGE_WRITE_ERROR_MESSAGE;
+        },
+        // Додавання нової зупинки або збереження змін у редагованій
+        submitStop() {
+            const stop = {
+                id: this.editingId ?? Date.now(),
+                country: this.form.country.trim(),
+                city: this.form.city.trim(),
+                dateFrom: this.form.dateFrom,
+                dateTo: this.form.dateTo,
+                notes: this.form.notes.trim()
+            };
+
+            if (this.isEditing) {
+                // Редагування замінює запис з тим самим id, а не створює новий
+                this.stops = this.stops.map(item => (item.id === stop.id ? stop : item));
+            } else {
+                this.stops.push(stop);
+            }
+
+            this.persist(); // Крок 3: після додавання чи редагування
+            this.resetForm();
+        },
+        // Заповнення форми даними зупинки для редагування
+        startEdit(stop) {
+            this.editingId = stop.id;
+            this.form = {
+                country: stop.country,
+                city: stop.city,
+                dateFrom: stop.dateFrom,
+                dateTo: stop.dateTo,
+                notes: stop.notes
+            };
+            this.$refs.stopForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+        // form.reset() додатково знімає з полів стан :user-invalid після успішного надсилання
+        resetForm() {
+            this.$refs.stopForm.reset();
+            this.editingId = null;
+            this.form = emptyStopForm();
+        },
+        removeStop(id) {
+            this.stops = this.stops.filter(stop => stop.id !== id);
+            if (this.editingId === id) {
+                this.resetForm();
+            }
+            this.persist(); // Крок 3: після видалення
+        },
+        // Власне повідомлення, якщо в текстовому полі лише пробіли (як у формі практикуму 8)
+        checkBlank(event, message) {
+            const input = event.target;
+            input.setCustomValidity('');
+            if (input.validity.patternMismatch) {
+                input.setCustomValidity(message);
+            }
+        }
+    }
+}).mount('#trip-route');

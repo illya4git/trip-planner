@@ -439,3 +439,91 @@ footer > p {
     opacity: .5;
     cursor: not-allowed;
 }
+
+/* ===================== Практикум 11 ===================== */
+
+.form-field > textarea {
+    padding: 8px 10px;
+    font: inherit;
+    border: 1px solid #222;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .7);
+    resize: vertical;
+}
+
+.form-actions,
+.stop-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.form-actions > button,
+.stop-actions > button {
+    padding: 10px 20px;
+    font: inherit;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #1f7a6f;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.form-actions > button:hover,
+.stop-actions > button:hover {
+    background-color: #18635a;
+}
+
+.form-actions > .button--secondary {
+    background-color: #023e8a; /* контраст з білим 9.23:1 */
+}
+
+.form-actions > .button--secondary:hover {
+    background-color: #012f69;
+}
+
+/* Кнопка видалення - теракотова, як мітка «Заплановано» (контраст з білим 5.42:1) */
+.stop-actions > .button--danger {
+    background-color: #b5462a;
+}
+
+.stop-actions > .button--danger:hover {
+    background-color: #9c3d23;
+}
+
+/* Поки база не відкрита або йде запис - кнопка недоступна */
+.form-actions > button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.route-list {
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.route-empty {
+    font-style: italic;
+}
+
+/* Картки зупинок не обираються кліком, дії виконуються кнопками */
+.card--stop {
+    cursor: default;
+}
+
+.card .stop-notes {
+    margin-top: 6px;
+    font-style: italic;
+    white-space: pre-line;
+}
+
+.stop-actions {
+    margin-top: 12px;
+}
+
+.stop-actions > button {
+    padding: 6px 14px;
+    font-size: .9rem;
+}

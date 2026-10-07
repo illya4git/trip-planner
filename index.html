@@ -15,6 +15,7 @@
         <a href="#trip-items">Мої подорожі</a>
         <a href="#trip-details">Деталі подорожі</a>
         <a href="#trip-add">Нова подорож</a>
+        <a href="#trip-route">Маршрут</a>
         <a href="#country-info">Довідка про країну</a>
     </nav>
 </header>
@@ -92,6 +93,65 @@
                 <p id="cost-warning" class="form-warning" aria-live="polite"></p>
                 <button type="submit">Додати подорож</button>
             </form>
+        </section>
+        <!-- Практикум 11: маршрут подорожі, що зберігається в браузері (окремий Vue-застосунок) -->
+        <section id="trip-route" v-cloak>
+            <h2>Маршрут подорожі</h2>
+            <form ref="stopForm" class="trip-form" @submit.prevent="submitStop">
+                <div class="form-field">
+                    <label for="stop-country">Країна</label>
+                    <input type="text" id="stop-country" v-model="form.country"
+                           required pattern=".*\S.*" placeholder="Наприклад, Польща"
+                           @input="checkBlank($event, 'Країна не може складатися лише з пробілів')">
+                </div>
+                <div class="form-field">
+                    <label for="stop-city">Місто</label>
+                    <input type="text" id="stop-city" v-model="form.city"
+                           required pattern=".*\S.*" placeholder="Наприклад, Краків"
+                           @input="checkBlank($event, 'Місто не може складатися лише з пробілів')">
+                </div>
+                <div class="form-field">
+                    <label for="stop-date-from">Дата прибуття</label>
+                    <input type="date" id="stop-date-from" v-model="form.dateFrom" required>
+                </div>
+                <div class="form-field">
+                    <label for="stop-date-to">Дата від'їзду</label>
+                    <!-- Дата від'їзду не може бути раніше за дату прибуття -->
+                    <input type="date" id="stop-date-to" v-model="form.dateTo" required :min="form.dateFrom">
+                </div>
+                <div class="form-field">
+                    <label for="stop-notes">Нотатки</label>
+                    <textarea id="stop-notes" v-model="form.notes" rows="3" maxlength="500"
+                              placeholder="Наприклад, екскурсія Вавелем"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" :disabled="!storageReady || saving">
+                        {{ isEditing ? 'Зберегти зміни' : 'Додати зупинку' }}
+                    </button>
+                    <button type="button" v-if="isEditing" class="button--secondary" @click="resetForm">Скасувати</button>
+                </div>
+            </form>
+            <p v-if="loading" class="load-status" aria-live="polite">Завантаження маршруту…</p>
+            <p v-if="error" class="load-error" role="alert">{{ error }}</p>
+            <p v-if="storageReady && !loading && sortedStops.length === 0" class="route-empty">
+                Маршрут поки порожній — додайте першу зупинку.
+            </p>
+            <!-- Список упорядкований: зупинки йдуть за датою прибуття (dateFrom) -->
+            <ol class="cards route-list">
+                <li v-for="(stop, index) in sortedStops" :key="stop.id"
+                    class="card card--stop" :class="{ 'card--selected': stop.id === editingId }">
+                    <div>
+                        <span class="status status--active">Зупинка {{ index + 1 }}</span>
+                        <h3>{{ stop.city }}, {{ stop.country }}</h3>
+                        <p>{{ formatDate(stop.dateFrom) }} – {{ formatDate(stop.dateTo) }}</p>
+                        <p v-if="stop.notes" class="stop-notes">{{ stop.notes }}</p>
+                        <div class="stop-actions">
+                            <button type="button" @click="startEdit(stop)">Редагувати</button>
+                            <button type="button" class="button--danger" @click="removeStop(stop.id)">Видалити</button>
+                        </div>
+                    </div>
+                </li>
+            </ol>
         </section>
         <section id="country-info">
             <h2>Довідка про країну</h2>
