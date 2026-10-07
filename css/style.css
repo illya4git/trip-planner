@@ -1,19 +1,29 @@
 /*
  * НЕЧІТКА ВИМОГА: «має надихати на подорожі»
  * ОБҐРУНТУВАННЯ: Базовий градієнт фону (#ffeaa7 - пісочний та #81ecec - морський/небесний)
- * було збережено, оскільки він ідеально передає атмосферу пляжу та моря. 
- * Для акцентів (бюджет) та міток статусів додано природні кольори: 
- * насичений синій (#023E8A), теракотовий (#E76F51) та зелений (#2A9D8F), 
- * які асоціюються з природою та подорожами. Контраст тексту на мітках до їхнього фону 
- * та синього тексту до загального фону складає більше 4.5:1, що відповідає стандартам.
+ * збережено, оскільки він передає атмосферу пляжу та моря. Шапка й підвал отримали
+ * темний «глибоководний» фон (#1f7a6f -> #264653), а бокова колонка - пісочну плашку (#f6e7c1),
+ * тож палітра тримається на самих блоках, а не лише на тлі.
+ * Мітки статусів мають окремий природний колір для кожного стану: теракотовий (захід сонця),
+ * бірюзово-зелений (природа) та глибокий морський (минуле). Відтінки теракотового
+ * та зеленого затемнено (#e76f51 -> #b5462a, #2a9d8f -> #1f7a6f) без зміни тону, щоб білий
+ * текст міток мав контраст не менше 4.5:1 (WCAG AA для звичайного тексту).
+ *
+ * ПЕРЕВІРКА КОНТРАСТУ (WCAG AA, звичайний текст >= 4.5:1):
+ *   #ffffff на #b5462a (Заплановано)   - 5.42:1
+ *   #ffffff на #1f7a6f (Триває)        - 5.16:1
+ *   #ffffff на #264653 (Завершено)     - 10.08:1
+ *   #ffffff (h1) на шапці #1f7a6f..#264653 - від 5.16:1 до 10.08:1
+ *   #fdf6e3 (nav) на шапці             - від 4.78:1 до 9.34:1
+ *   #264653 (h2) на тлі #ffeaa7..#81ecec - від 7.27:1 до 8.44:1
+ *   #023e8a (суми бюджету) на #f6e7c1  - 8.32:1
+ *   #c9d6d6 (підвал) на #264653        - 6.75:1
  */
 
-/* Крок 2. Базовий reset */
 *, *::before, *::after {
     box-sizing: border-box;
 }
 
-/* Крок 3. Базова типографіка */
 body {
     font-size: 1.1rem;
     font-family: system-ui, sans-serif;
@@ -43,15 +53,14 @@ h2 {
 }
 
 
-/* Крок 4. Шапка: бірюзово-морський фон, внутрішні відступи, піщана лінія знизу */
 header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     max-width: 1920px;
-    margin: 0 auto 40px;
-    padding: 24px 32px;
+    margin: 0 auto 30px;
+    padding: 16px 20px;
     row-gap: 10px;
     column-gap: 30px;
     text-align: center;
@@ -61,10 +70,10 @@ header {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Білий заголовок тепер лежить на темній шапці - обведення (text-shadow) прибрано */
 header > h1 {
     margin: 0;
-    line-height: 1;
-    font-size: 2rem;
+    line-height: 1.2;
     color: #ffffff;
     font-style: italic;
     text-decoration: underline;
@@ -74,6 +83,8 @@ header > h1 {
 
 nav {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 15px;
 }
 
@@ -90,12 +101,15 @@ nav > a:hover {
 }
 
 
-/* Крок 5. Основна колонка та відступи між секціями */
 .wrap {
     display: grid;
     max-width: 1920px;
-    margin: 0 auto;
+    margin: 0 auto 30px;
     gap: 30px;
+}
+
+main > section + section {
+    margin-top: 40px;
 }
 
 .cards {
@@ -104,12 +118,6 @@ nav > a:hover {
     gap: 30px;
 }
 
-main > section {
-    margin-bottom: 40px;
-}
-
-
-/* Крок 6. Картки подорожей: непрозорий світло-піщаний фон */
 .card {
     overflow: hidden;
     border: 1px solid #e9c46a;
@@ -130,14 +138,13 @@ main > section {
 
 .card h3 {
     font-size: 20px;
-    margin: 0 0 8px;
+    margin: 8px 0;
     color: #264653;
 }
 
 .card p {
     margin: 0;
 }
-
 
 .status {
     display: inline-block;
@@ -152,30 +159,26 @@ main > section {
 }
 
 .status--planned {
-    background-color: #e76f51;
+    background-color: #b5462a; /* теракотовий, контраст з білим 5.42:1 */
 }
 
 .status--active {
-    background-color: #2a9d8f;
+    background-color: #1f7a6f; /* бірюзово-зелений, контраст з білим 5.16:1 */
 }
 
 .status--past {
-    background-color: #264653;
+    background-color: #264653; /* глибокий морський, контраст з білим 10.08:1 */
 }
 
 
-
-/* Крок 7. Бокова колонка «Бюджет»: власний фон і рамка */
 aside {
-    max-width: 1920px;
-    margin: 0 auto 40px;
+    align-self: start;
     padding: 20px 24px;
     background: #f6e7c1;
     border: 1px solid #e9c46a;
     border-left: 6px solid #1f7a6f;
     border-radius: 10px;
 }
-
 
 aside > ul {
     margin: 0;
@@ -202,7 +205,6 @@ aside > ul > li:last-child {
 }
 
 
-/* Крок 7. Підвал: менший шрифт, відступи, приглушений колір */
 footer {
     max-width: 1920px;
     margin: 0 auto;
@@ -224,6 +226,7 @@ footer > p {
 }
 
 @media (min-width: 1024px) {
+    header { justify-content: space-between; padding: 20px 28px; }
     .wrap { grid-template-columns: 3fr 1fr; }
     .cards { grid-template-columns: repeat(3, 1fr); }
 }
