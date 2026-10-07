@@ -373,7 +373,7 @@ countryRefreshButton.addEventListener('click', () => {
 // Перше завантаження при відкритті сторінки
 loadCountry(DEFAULT_COUNTRY);
 
-// ===================== Практикум 11: маршрут подорожі в локальному сховищі =====================
+// ===================== Практикум 11: маршрут подорожі в IndexedDB =====================
 
 // Крок 1: модель даних варіанта 10 - пункт маршруту (зупинка):
 // {
@@ -386,24 +386,24 @@ loadCountry(DEFAULT_COUNTRY);
 // }
 // Дати зберігаються рядками ISO, тож їх можна порівнювати як звичайні рядки.
 
-// Ключ, під яким маршрут зберігається в localStorage
+// Ключ, під яким маршрут зберігався в localStorage (кроки 2-4), і прапорець міграції (крок 8)
 const STOPS_STORAGE_KEY = 'tripStops';
+const MIGRATION_FLAG_KEY = 'tripStopsMigrated';
 
-const STORAGE_WRITE_ERROR_MESSAGE = 'Не вдалося зберегти зміни маршруту. Спробуйте ще раз.';
+// Крок 5: схема IndexedDB - одна база, одне об'єктне сховище, ключ - поле id моделі
+const DB_NAME = 'TripPlannerDB';
+const DB_VERSION = 1;
+const STOPS_STORE = 'tripStops';
 
-// Крок 2: збереження масиву зупинок у localStorage (лише рядки, тому JSON.stringify).
-// setItem може кинути QuotaExceededError, коли сховище переповнене.
-function saveToLocalStorage(stops) {
-    try {
-        localStorage.setItem(STOPS_STORAGE_KEY, JSON.stringify(stops));
-        return true;
-    } catch (error) {
-        console.error('Не вдалося записати маршрут у localStorage:', error);
-        return false;
-    }
-}
+// Повідомлення для користувача (технічні деталі йдуть лише в консоль)
+const DB_OPEN_ERROR_MESSAGE =
+    'Не вдалося відкрити сховище браузера, тому маршрут не буде збережено. ' +
+    'Можливо, увімкнено режим приватного перегляду або збереження даних сайтів заборонене в налаштуваннях.';
+const DB_READ_ERROR_MESSAGE = 'Не вдалося прочитати маршрут зі сховища браузера. Перезавантажте сторінку.';
+const DB_WRITE_ERROR_MESSAGE = 'Не вдалося зберегти зміни маршруту. Спробуйте ще раз.';
 
-// Крок 2: читання масиву зупинок; пошкоджені дані не «кладуть» застосунок, а дають порожній список
+// Крок 2: читання маршруту, збереженого в localStorage до переходу на IndexedDB.
+// Після кроку 9 функція потрібна лише як джерело одноразової міграції (крок 8).
 function loadFromLocalStorage() {
     try {
         const raw = localStorage.getItem(STOPS_STORAGE_KEY);
@@ -413,6 +413,119 @@ function loadFromLocalStorage() {
         console.error('Пошкоджені дані маршруту в localStorage:', error);
         return [];
     }
+}
+
+// Відкрите з'єднання кешується: база відкривається один раз, а CRUD-функції лише чекають на той самий Promise
+let dbPromise = null;
+
+/**
+ * Крок 6: відкриття бази TripPlannerDB. Якщо бази ще немає або її версія нижча за DB_VERSION,
+ * спершу спрацьовує onupgradeneeded - лише там можна створити об'єктне сховище.
+ * Повертає Promise з об'єктом IDBDatabase.
+ */
+function openDB() {
+    if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+            // Крок 11: у браузері без IndexedDB одразу відхиляємо Promise
+            if (!window.indexedDB) {
+                reject(new Error('IndexedDB недоступна в цьому браузері'));
+                return;
+            }
+
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                // Перевірка не дає створити те саме сховище вдруге
+                if (!db.objectStoreNames.contains(STOPS_STORE)) {
+                    db.createObjectStore(STOPS_STORE, { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+
+        // Після невдачі скидаємо кеш, щоб наступний виклик спробував відкрити базу заново
+        dbPromise.catch(() => {
+            dbPromise = null;
+        });
+    }
+    return dbPromise;
+}
+
+// Спільний запис для addItem і updateItem: put() створює новий запис або замінює наявний з тим самим id.
+// Promise виконується лише після oncomplete транзакції, тобто коли дані вже точно записані.
+async function putItem(stop) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STOPS_STORE, 'readwrite');
+        tx.objectStore(STOPS_STORE).put(stop);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error); // напр., QuotaExceededError скасовує транзакцію
+    });
+}
+
+// Крок 7 (Create): додавання нової зупинки в транзакції readwrite
+function addItem(stop) {
+    return putItem(stop);
+}
+
+// Крок 7 (Update): оновлення зупинки - put із тим самим id замінює запис, а не створює дублікат
+function updateItem(stop) {
+    return putItem(stop);
+}
+
+// Крок 7 (Read): усі зупинки в транзакції readonly; getAll() повертає їх у порядку ключа id
+async function getAllItems() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STOPS_STORE, 'readonly');
+        const request = tx.objectStore(STOPS_STORE).getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Крок 7 (Delete): видалення зупинки за ключем id в транзакції readwrite
+async function deleteItem(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STOPS_STORE, 'readwrite');
+        tx.objectStore(STOPS_STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    });
+}
+
+/**
+ * Крок 8: одноразове перенесення маршруту з localStorage в IndexedDB.
+ * Дані переносяться, лише якщо сховище tripStops порожнє, а в localStorage щось є.
+ * Після першого запуску ставиться прапорець tripStopsMigrated=true, і перевірка більше не виконується.
+ * Старий запис у localStorage не видаляється - він лишається резервною копією.
+ * Повертає кількість перенесених зупинок.
+ */
+async function migrateFromLocalStorage() {
+    if (localStorage.getItem(MIGRATION_FLAG_KEY) === 'true') {
+        return 0;
+    }
+
+    const existingStops = await getAllItems();
+    const legacyStops = loadFromLocalStorage();
+    let migratedCount = 0;
+
+    if (existingStops.length === 0 && legacyStops.length > 0) {
+        for (const stop of legacyStops) {
+            await addItem(stop);
+            migratedCount++;
+        }
+    }
+
+    // Прапорець ставимо лише після успішного перенесення всіх записів
+    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+    return migratedCount;
 }
 
 // Порожній стан форми зупинки
@@ -427,17 +540,18 @@ const byDateFrom = (a, b) => a.dateFrom.localeCompare(b.dateFrom) || a.dateTo.lo
 const routeApp = Vue.createApp({
     data() {
         return {
-            // Маршрут відновлюється з localStorage одразу під час створення застосунку
-            stops: loadFromLocalStorage(),
+            // Крок 9: стартує порожнім - дані надходять асинхронно з IndexedDB у mounted()
+            stops: [],
             form: emptyStopForm(),
-            editingId: null,     // id зупинки, яку зараз редагують, або null
-            storageReady: true,  // localStorage доступний синхронно
-            loading: false,
+            editingId: null,      // id зупинки, яку зараз редагують, або null
+            storageReady: false,  // true після успішного openDB()
+            loading: true,
             saving: false,
             error: ''
         };
     },
     computed: {
+        // Сортування виконується на клієнті над масивом, отриманим через getAllItems
         sortedStops() {
             return [...this.stops].sort(byDateFrom);
         },
@@ -445,14 +559,45 @@ const routeApp = Vue.createApp({
             return this.editingId !== null;
         }
     },
+    async mounted() {
+        // Крок 11: зрозуміле повідомлення, якщо базу не вдалося відкрити
+        try {
+            await openDB();
+            this.storageReady = true;
+        } catch (error) {
+            this.error = DB_OPEN_ERROR_MESSAGE;
+            console.error('Помилка відкриття IndexedDB:', error);
+            this.loading = false;
+            return;
+        }
+
+        // Збій міграції (напр., заблокований localStorage) не повинен блокувати роботу з IndexedDB
+        try {
+            const migratedCount = await migrateFromLocalStorage();
+            if (migratedCount > 0) {
+                console.info(`Перенесено з localStorage в IndexedDB зупинок: ${migratedCount}`);
+            }
+        } catch (error) {
+            console.error('Міграцію маршруту з localStorage не виконано:', error);
+        }
+
+        await this.loadStops();
+        this.loading = false;
+    },
     methods: {
         formatDate,
-        // Крок 3: запис поточного стану після кожної зміни
-        persist() {
-            this.error = saveToLocalStorage(this.stops) ? '' : STORAGE_WRITE_ERROR_MESSAGE;
+        // Крок 9: єдине джерело даних списку - IndexedDB; викликається після кожної CRUD-операції
+        async loadStops() {
+            try {
+                this.stops = await getAllItems();
+            } catch (error) {
+                this.error = DB_READ_ERROR_MESSAGE;
+                console.error(error);
+            }
         },
-        // Додавання нової зупинки або збереження змін у редагованій
-        submitStop() {
+        // Додавання нової зупинки (addItem) або збереження змін у редагованій (updateItem)
+        async submitStop() {
+            // Звичайний об'єкт, а не реактивний Proxy Vue: IndexedDB не вміє клонувати Proxy
             const stop = {
                 id: this.editingId ?? Date.now(),
                 country: this.form.country.trim(),
@@ -462,15 +607,22 @@ const routeApp = Vue.createApp({
                 notes: this.form.notes.trim()
             };
 
-            if (this.isEditing) {
-                // Редагування замінює запис з тим самим id, а не створює новий
-                this.stops = this.stops.map(item => (item.id === stop.id ? stop : item));
-            } else {
-                this.stops.push(stop);
+            this.saving = true;
+            this.error = '';
+            try {
+                if (this.isEditing) {
+                    await updateItem(stop);
+                } else {
+                    await addItem(stop);
+                }
+                this.resetForm();
+                await this.loadStops();
+            } catch (error) {
+                this.error = DB_WRITE_ERROR_MESSAGE;
+                console.error(error);
+            } finally {
+                this.saving = false;
             }
-
-            this.persist(); // Крок 3: після додавання чи редагування
-            this.resetForm();
         },
         // Заповнення форми даними зупинки для редагування
         startEdit(stop) {
@@ -490,12 +642,18 @@ const routeApp = Vue.createApp({
             this.editingId = null;
             this.form = emptyStopForm();
         },
-        removeStop(id) {
-            this.stops = this.stops.filter(stop => stop.id !== id);
-            if (this.editingId === id) {
-                this.resetForm();
+        async removeStop(id) {
+            this.error = '';
+            try {
+                await deleteItem(id);
+                if (this.editingId === id) {
+                    this.resetForm();
+                }
+                await this.loadStops();
+            } catch (error) {
+                this.error = DB_WRITE_ERROR_MESSAGE;
+                console.error(error);
             }
-            this.persist(); // Крок 3: після видалення
         },
         // Власне повідомлення, якщо в текстовому полі лише пробіли (як у формі практикуму 8)
         checkBlank(event, message) {
