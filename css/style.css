@@ -108,10 +108,8 @@ nav > a:hover {
     gap: 30px;
 }
 
-/* Секції подорожей обгорнуті в #trips-app (Vue), тож відступи задаємо і всередині, і після нього */
-main > section + section,
-main > #trips-app + section,
-#trips-app > section + section {
+/* Практикум 13: усі сторінки рендеряться в <main id="app">, тож відступ між секціями задається там */
+#app > section + section {
     margin-top: 40px;
 }
 
@@ -406,11 +404,6 @@ footer > p {
 
 /* ===================== Практикум 10 ===================== */
 
-/* Сирий шаблон із {{ }} не показуємо, доки Vue не змонтує застосунок */
-[v-cloak] {
-    display: none;
-}
-
 .day-stepper {
     display: inline-flex;
     align-items: center;
@@ -551,4 +544,106 @@ footer > p {
     border: 1px solid #e9c46a;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ===================== Практикум 13 ===================== */
+
+/* Пункт меню розділу, у якому зараз перебуває користувач */
+nav > a[aria-current="page"] {
+    border-bottom-color: #e9c46a;
+}
+
+/* Після переходу фокус програмно переводиться на заголовок сторінки - рамку для нього не малюємо */
+#app h2[tabindex="-1"]:focus {
+    outline: none;
+}
+
+.back-link {
+    margin: 0 0 20px;
+}
+
+.back-link > a,
+.stop-pager > a,
+.page-message a {
+    font-weight: 600;
+    color: #023e8a; /* на тлі #ffeaa7..#81ecec - від 7.36:1 */
+    text-underline-offset: 3px;
+}
+
+/* Назва в картці - посилання на окрему сторінку; колір успадковується від заголовка картки */
+.card__link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.card__link:hover {
+    text-decoration: underline;
+    text-decoration-color: #e9c46a;
+    text-underline-offset: 4px;
+}
+
+/* Посилання картки подорожі розтягнуто на всю картку: клікабельна вся картка (як у практикумі 8),
+   але в DOM це одне звичайне посилання, доступне з клавіатури й через «Відкрити в новій вкладці» */
+.card--trip {
+    position: relative;
+}
+
+.card--trip .card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.card--trip .card__link:focus-visible {
+    outline: none;
+}
+
+.card--trip:has(.card__link:focus-visible) {
+    outline: 3px solid #023e8a;
+    outline-offset: 2px;
+}
+
+/* У картці зупинки є кнопки, тож посилання лишається лише на назві й позначене підкресленням */
+.card--stop .card__link {
+    text-decoration: underline;
+    text-decoration-color: #e9c46a;
+    text-underline-offset: 4px;
+}
+
+.card--stop .card__link:hover {
+    text-decoration-color: currentColor;
+}
+
+/* Сторінка деталей зупинки */
+.stop-details h3 {
+    margin: 24px 0 8px;
+    color: #264653;
+}
+
+.stop-details .stop-notes {
+    margin: 0;
+    font-style: italic;
+    white-space: pre-line;
+}
+
+.stop-pager {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px 24px;
+    margin-top: 28px;
+}
+
+/* «Наступна» тримається правого краю, навіть якщо попередньої зупинки немає */
+.stop-pager__next {
+    margin-left: auto;
+}
+
+/* Сторінки «Не знайдено» та помилки */
+.page-message__path {
+    padding: 2px 6px;
+    font-size: .95em;
+    word-break: break-all;
+    background: rgba(255, 255, 255, .6);
+    border-radius: 4px;
 }

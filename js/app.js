@@ -1,4 +1,4 @@
-// ===================== Практикум 10: список подорожей на Vue 3 =====================
+// ===================== Практикум 10: компонент картки подорожі на Vue 3 =====================
 
 // Крок 1, 10: обрано Vue 3, бо його глобальна CDN-збірка вже містить компілятор шаблонів,
 // тож компоненти описуються звичним HTML-шаблоном прямо на сторінці - без Babel, JSX і збірки.
@@ -6,11 +6,14 @@
 // Мінімальний розумний бюджет на один день подорожі (грн)
 const MIN_DAILY_BUDGET = 1000;
 
-// Стрілкова функція для обчислення витрат на день (використовують форма і секція деталей)
+// Стрілкова функція для обчислення витрат на день (використовують форма і сторінка подорожі)
 const costPerDay = trip => Math.round(trip.budget / trip.days);
 
 // Крок 4: компонент картки подорожі за варіантом 10.
 // Отримує всі дані лише через props і не звертається до глобальних змінних.
+// Практикум 13: клік по картці більше не обирає подорож на тій самій сторінці, а відкриває
+// окрему сторінку #/trip/:id. Для цього назва подорожі стала посиланням data-link, розтягнутим
+// стилями на всю картку, тому подію select і проп selected прибрано.
 const TripCard = {
     props: {
         id: { type: Number, required: true },
@@ -19,10 +22,8 @@ const TripCard = {
         budget: { type: Number, required: true },
         image: { type: String, default: '' },
         statusText: { type: String, default: '' },
-        statusClass: { type: String, default: '' },
-        selected: { type: Boolean, default: false }
+        statusClass: { type: String, default: '' }
     },
-    emits: ['select'],
     computed: {
         // Похідне значення варіанта: перераховується автоматично щоразу,
         // коли змінюється budget або days, і ніде окремо не зберігається
@@ -32,88 +33,58 @@ const TripCard = {
         // Умовний клас із практикуму 7 (budget або expensive)
         budgetClass() {
             return this.budget <= 15000 ? 'card--budget' : 'card--expensive';
+        },
+        // Практикум 13: адреса сторінки цієї подорожі
+        href() {
+            return tripHref(this.id);
         }
     },
-    // Крок 6: клік по картці лише повідомляє батьківському компоненту id через $emit,
-    // а сам стан (яку подорож обрано) змінює батьківський компонент
     template: `
-        <article class="card"
-                 :class="[budgetClass, { 'card--selected': selected }]"
-                 :data-cost-per-day="costPerDay"
-                 @click="$emit('select', id)">
+        <article class="card card--trip"
+                 :class="budgetClass"
+                 :data-cost-per-day="costPerDay">
             <img v-if="image" :src="image" :alt="destination">
             <div>
                 <span class="status" :class="statusClass">{{ statusText }}</span>
-                <h3>{{ destination }}</h3>
+                <h3><a class="card__link" :href="href" data-link>{{ destination }}</a></h3>
                 <p>{{ days }} днів, {{ budget }} грн</p>
                 <p>Бюджет на день: <span class="budget-amount">{{ costPerDay }} грн</span></p>
             </div>
         </article>`
 };
 
-const tripsApp = Vue.createApp({
-    components: { TripCard },
-    data() {
-        return {
-            // Крок 3: масив подорожей (практикум 6) тепер у реактивному стані, а не в зовнішній змінній.
-            // Кожен запис отримав унікальний id - він потрібен для :key і для події select.
-            trips: [
-                {
-                    id: 1,
-                    destination: 'Відень',
-                    days: 7,
-                    budget: 23000,
-                    image: 'assets/img/vienna.jpg',
-                    statusText: 'Поточна',
-                    statusClass: 'status--active'
-                },
-                {
-                    id: 2,
-                    destination: 'Будапешт',
-                    days: 3,
-                    budget: 5000,
-                    image: 'assets/img/budapest.jpg',
-                    statusText: 'Минула',
-                    statusClass: 'status--past'
-                },
-                {
-                    id: 3,
-                    destination: 'Прага',
-                    days: 10,
-                    budget: 15000,
-                    image: 'assets/img/prague.jpg',
-                    statusText: 'Заплановано',
-                    statusClass: 'status--planned'
-                }
-            ],
-            selectedId: null
-        };
+// Крок 3: початковий масив подорожей (практикум 6), у якому кожен запис має унікальний id.
+// Практикум 13: масив більше не живе в data() Vue-застосунку - під час створення сховища trips
+// його записи переносяться в IndexedDB (див. openDB), а сторінки читають подорожі вже звідти.
+const DEFAULT_TRIPS = [
+    {
+        id: 1,
+        destination: 'Відень',
+        days: 7,
+        budget: 23000,
+        image: 'assets/img/vienna.jpg',
+        statusText: 'Поточна',
+        statusClass: 'status--active'
     },
-    computed: {
-        // Обрана подорож виводиться з selectedId, тому ніколи не розходиться з масивом
-        selectedTrip() {
-            return this.trips.find(trip => trip.id === this.selectedId) || null;
-        },
-        selectedCostPerDay() {
-            return this.selectedTrip ? costPerDay(this.selectedTrip) : 0;
-        }
+    {
+        id: 2,
+        destination: 'Будапешт',
+        days: 3,
+        budget: 5000,
+        image: 'assets/img/budapest.jpg',
+        statusText: 'Минула',
+        statusClass: 'status--past'
     },
-    methods: {
-        // Крок 6: батьківський компонент оновлює стан у відповідь на подію select картки
-        selectTrip(id) {
-            this.selectedId = id;
-        },
-        // Зміна тривалості обраної подорожі - costPerDay у картці перераховується сам
-        changeDays(delta) {
-            this.selectedTrip.days = Math.max(1, this.selectedTrip.days + delta);
-        },
-        // Додавання нової подорожі з форми практикуму 8 з новим унікальним id
-        addTrip(trip) {
-            const nextId = Math.max(0, ...this.trips.map(t => t.id)) + 1;
-            this.trips.push({ id: nextId, ...trip });
-        }
+    {
+        id: 3,
+        destination: 'Прага',
+        days: 10,
+        budget: 15000,
+        image: 'assets/img/prague.jpg',
+        statusText: 'Заплановано',
+        statusClass: 'status--planned'
     }
-}).mount('#trips-app');
+];
 
 // Універсальна функція рендеру масиву (практикум 7, узагальнена в практикумі 9).
 // Після практикуму 10 нею користується лише довідка про країни.
@@ -128,85 +99,96 @@ function renderList(container, items, createItem) {
 // Крок 7: ручний DOM-рендер подорожей видалено - його замінено компонентом TripCard.
 // Прибрано функції createTripCard, renderTrips і showTripDetails, програмне видалення
 // заглушки .static-placeholder та делегований обробник кліку по #trips-list (практикуми 7-8):
-// список, лічильник, підсвічування обраної картки й деталі тепер рендерить Vue з реактивного стану.
+// список і лічильник тепер рендерить Vue з реактивного стану.
+// Практикум 13: Vue-застосунок tripsApp розділено на сторінки HomePage і TripPage (див. блок практикуму 13).
 
 
 // ===================== Практикум 8: форма та події =====================
 
-// Крок 2: Вибір форми та її полів
-const form = document.querySelector('#trip-form');
-const destinationInput = document.querySelector('#destination');
-const daysInput = document.querySelector('#days');
-const budgetInput = document.querySelector('#budget');
-const costPreview = document.querySelector('#cost-preview');
-const costWarning = document.querySelector('#cost-warning');
+// Практикум 13: форма тепер входить до сторінки «/», яка створюється заново під час кожного
+// переходу на неї. Тому обробники загорнуто у функцію - view головної сторінки викликає її
+// для щойно відрендереної форми. onSubmit отримує нову подорож і повертає Promise<boolean>:
+// true, якщо подорож збережено (тоді форма очищується).
+function setupTripForm(form, onSubmit) {
+    // Крок 2: Вибір полів форми (у межах переданої форми, а не всього документа)
+    const destinationInput = form.elements.destination;
+    const daysInput = form.elements.days;
+    const budgetInput = form.elements.budget;
+    const costPreview = form.querySelector('#cost-preview');
+    const costWarning = form.querySelector('#cost-warning');
+    const submitButton = form.querySelector('button[type="submit"]');
 
-// Повідомлення замість стандартного, якщо в полі напрямку лише пробіли
-destinationInput.addEventListener('input', () => {
-    if (destinationInput.validity.patternMismatch) {
-        destinationInput.setCustomValidity('Напрямок не може складатися лише з пробілів');
-    } else {
-        destinationInput.setCustomValidity('');
+    // Повідомлення замість стандартного, якщо в полі напрямку лише пробіли
+    destinationInput.addEventListener('input', () => {
+        if (destinationInput.validity.patternMismatch) {
+            destinationInput.setCustomValidity('Напрямок не може складатися лише з пробілів');
+        } else {
+            destinationInput.setCustomValidity('');
+        }
+    });
+
+    // Крок 8: Перерахунок costPerDay «на льоту» та попередження про замалий бюджет
+    function updateCostPreview() {
+        const days = Number(daysInput.value);
+        const budget = Number(budgetInput.value);
+
+        // Поки одне з полів порожнє чи некоректне - розрахунок не показуємо
+        if (daysInput.value === '' || budgetInput.value === '' || days < 1 || budget < 0) {
+            costPreview.textContent = '—';
+            costWarning.textContent = '';
+            return;
+        }
+
+        const dailyCost = costPerDay({ days, budget });
+        costPreview.textContent = `${dailyCost} грн`;
+
+        // Попередження не блокує надсилання форми - це лише підказка користувачу
+        if (dailyCost < MIN_DAILY_BUDGET) {
+            costWarning.textContent =
+                `Увага: ${dailyCost} грн на день - менше за рекомендовані ${MIN_DAILY_BUDGET} грн. ` +
+                'Цього може не вистачити на проживання та харчування.';
+        } else {
+            costWarning.textContent = '';
+        }
     }
-});
 
-// Крок 8: Перерахунок costPerDay «на льоту» та попередження про замалий бюджет
-function updateCostPreview() {
-    const days = Number(daysInput.value);
-    const budget = Number(budgetInput.value);
+    // Обидва поля впливають на результат, тому слухаємо input на кожному з них
+    daysInput.addEventListener('input', updateCostPreview);
+    budgetInput.addEventListener('input', updateCostPreview);
 
-    // Поки одне з полів порожнє чи некоректне - розрахунок не показуємо
-    if (daysInput.value === '' || budgetInput.value === '' || days < 1 || budget < 0) {
-        costPreview.textContent = '—';
-        costWarning.textContent = '';
-        return;
-    }
+    // Обробник надсилання форми: додає нову подорож без перезавантаження сторінки
+    form.addEventListener('submit', async event => {
+        // Крок 3: Скасування стандартної поведінки (перезавантаження сторінки)
+        event.preventDefault();
 
-    const dailyCost = costPerDay({ days, budget });
-    costPreview.textContent = `${dailyCost} грн`;
+        // Крок 4: Зчитування значень полів, числові поля приводимо до Number
+        const destination = destinationInput.value.trim();
+        const days = Number(daysInput.value);
+        const budget = Number(budgetInput.value);
 
-    // Попередження не блокує надсилання форми - це лише підказка користувачу
-    if (dailyCost < MIN_DAILY_BUDGET) {
-        costWarning.textContent =
-            `Увага: ${dailyCost} грн на день - менше за рекомендовані ${MIN_DAILY_BUDGET} грн. ` +
-            'Цього може не вистачити на проживання та харчування.';
-    } else {
-        costWarning.textContent = '';
-    }
+        // Крок 5: Новий об'єкт тієї самої форми, що й записи сховища trips (id видасть IndexedDB)
+        const newTrip = {
+            destination,
+            days,
+            budget,
+            image: '',
+            statusText: 'Заплановано',
+            statusClass: 'status--planned'
+        };
+
+        // Крок 6: Збереження подорожі. Практикум 13: запис іде в IndexedDB, а список
+        // перемальовує сторінка HomePage; поки триває запис, повторне надсилання заблоковане
+        submitButton.disabled = true;
+        const saved = await onSubmit(newTrip);
+        submitButton.disabled = false;
+
+        // Крок 7: Очищення форми та розрахунку лише після успішного збереження
+        if (saved) {
+            form.reset();
+            updateCostPreview();
+        }
+    });
 }
-
-// Обидва поля впливають на результат, тому слухаємо input на кожному з них
-daysInput.addEventListener('input', updateCostPreview);
-budgetInput.addEventListener('input', updateCostPreview);
-
-// Обробник надсилання форми: додає нову подорож без перезавантаження сторінки
-form.addEventListener('submit', event => {
-    // Крок 3: Скасування стандартної поведінки (перезавантаження сторінки)
-    event.preventDefault();
-
-    // Крок 4: Зчитування значень полів, числові поля приводимо до Number
-    const destination = destinationInput.value.trim();
-    const days = Number(daysInput.value);
-    const budget = Number(budgetInput.value);
-
-    // Крок 5: Новий об'єкт тієї самої форми, що й елементи масиву trips (id додасть Vue-застосунок)
-    const newTrip = {
-        destination,
-        days,
-        budget,
-        image: '',
-        statusText: 'Заплановано',
-        statusClass: 'status--planned'
-    };
-
-    // Крок 6: Додавання в реактивний стан - список перемальовує Vue (практикум 10),
-    // тому ручний виклик рендеру більше не потрібен
-    tripsApp.addTrip(newTrip);
-
-    // Крок 7: Очищення форми та розрахунку після успішного додавання
-    form.reset();
-    updateCostPreview();
-});
 
 // ===================== Практикум 9: клієнт для API довідки про країни =====================
 
@@ -222,16 +204,9 @@ const COUNTRY_SERVER_ERROR_MESSAGE = 'Сервіс довідки тимчасо
 const COUNTRY_NETWORK_ERROR_MESSAGE =
     'Не вдалося завантажити дані про країну. Перевірте з\'єднання з інтернетом і натисніть «Оновити».';
 
-const countryForm = document.querySelector('#country-form');
-const countryInput = document.querySelector('#country-query');
-const countryRefreshButton = document.querySelector('#country-refresh');
-const countrySubmitButton = countryForm.querySelector('button[type="submit"]');
-const countryLoading = document.querySelector('#country-loading');
-const countryError = document.querySelector('#country-error');
-const countryCount = document.querySelector('#country-count');
-const countryList = document.querySelector('#country-list');
-
-// Останній виконаний запит - його повторює кнопка «Оновити»
+// Останній виконаний запит - його повторює кнопка «Оновити».
+// Практикум 13: змінна лишилася поза сторінкою, тож після повернення на #/countries
+// показується та сама країна, яку користувач шукав востаннє
 let lastCountryQuery = DEFAULT_COUNTRY;
 
 // Крок 6: зіставлення об'єкта відповіді API з формою власного об'єкта застосунку.
@@ -276,108 +251,126 @@ function createCountryCard(country) {
     return card;
 }
 
-function renderCountries(countries) {
-    renderList(countryList, countries, createCountryCard);
-    countryCount.textContent = countries.length > 0 ? `Знайдено країн: ${countries.length}` : '';
-}
-
-// Крок 7: видима ознака завантаження - текст, aria-busy та заблоковані кнопки
-function showLoading(isLoading) {
-    countryLoading.textContent = isLoading ? 'Завантаження…' : '';
-    countryList.setAttribute('aria-busy', String(isLoading));
-    countrySubmitButton.disabled = isLoading;
-    countryRefreshButton.disabled = isLoading;
-}
-
-function showError(message) {
-    countryError.textContent = message;
-}
-
 /**
- * Кроки 2-8: завантаження даних про країну за назвою.
- * API: countries.dev, ендпоінт /name/{name} (без ключа, з CORS) - https://countries.dev/docs/api/name
- * Відкритий аналог REST Countries (https://restcountries.com/v3.1/name/{name}).
- * Пошук частковий і без урахування регістру: за запитом "ger" повертаються Germany, Algeria, Niger тощо.
- * На невідому назву сервіс відповідає кодом 404 з текстом "Country not found".
+ * Практикум 13: секція довідки рендериться заново під час кожного переходу на #/countries,
+ * тому пошук елементів і підключення обробників загорнуто у функцію, яку викликає
+ * view-функція сторінки. Логіка запиту, стану завантаження й помилок - без змін.
  */
-async function loadCountry(query) {
-    lastCountryQuery = query;
-    showError('');
-    showLoading(true);
+function setupCountryLookup(section) {
+    const countryForm = section.querySelector('#country-form');
+    const countryInput = section.querySelector('#country-query');
+    const countryRefreshButton = section.querySelector('#country-refresh');
+    const countrySubmitButton = countryForm.querySelector('button[type="submit"]');
+    const countryLoading = section.querySelector('#country-loading');
+    const countryError = section.querySelector('#country-error');
+    const countryCount = section.querySelector('#country-count');
+    const countryList = section.querySelector('#country-list');
 
-    try {
-        // Крок 3: запит і очікування відповіді; назву кодуємо, бо в ній можуть бути пробіли
-        const response = await fetch(COUNTRIES_API_URL + encodeURIComponent(query));
+    function renderCountries(countries) {
+        renderList(countryList, countries, createCountryCard);
+        countryCount.textContent = countries.length > 0 ? `Знайдено країн: ${countries.length}` : '';
+    }
 
-        // Крок 4: fetch не вважає 404/500 помилкою, тому статус перевіряємо вручну
-        if (!response.ok) {
-            const error = new Error(`countries.dev відповів кодом ${response.status}`);
-            error.status = response.status;
-            throw error;
+    // Крок 7: видима ознака завантаження - текст, aria-busy та заблоковані кнопки
+    function showLoading(isLoading) {
+        countryLoading.textContent = isLoading ? 'Завантаження…' : '';
+        countryList.setAttribute('aria-busy', String(isLoading));
+        countrySubmitButton.disabled = isLoading;
+        countryRefreshButton.disabled = isLoading;
+    }
+
+    function showError(message) {
+        countryError.textContent = message;
+    }
+
+    /**
+     * Кроки 2-8: завантаження даних про країну за назвою.
+     * API: countries.dev, ендпоінт /name/{name} (без ключа, з CORS) - https://countries.dev/docs/api/name
+     * Відкритий аналог REST Countries (https://restcountries.com/v3.1/name/{name}).
+     * Пошук частковий і без урахування регістру: за запитом "ger" повертаються Germany, Algeria, Niger тощо.
+     * На невідому назву сервіс відповідає кодом 404 з текстом "Country not found".
+     */
+    async function loadCountry(query) {
+        lastCountryQuery = query;
+        showError('');
+        showLoading(true);
+
+        try {
+            // Крок 3: запит і очікування відповіді; назву кодуємо, бо в ній можуть бути пробіли
+            const response = await fetch(COUNTRIES_API_URL + encodeURIComponent(query));
+
+            // Крок 4: fetch не вважає 404/500 помилкою, тому статус перевіряємо вручну
+            if (!response.ok) {
+                const error = new Error(`countries.dev відповів кодом ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+
+            // Крок 5: розбір тіла відповіді як JSON
+            const data = await response.json();
+            console.log(data);
+
+            // Додатковий захист: порожній масив теж означає «нічого не знайдено»
+            if (!Array.isArray(data) || data.length === 0) {
+                const error = new Error('countries.dev повернув порожній результат');
+                error.status = 404;
+                throw error;
+            }
+
+            // Крок 6: виведення в DOM через спільну функцію рендеру
+            renderCountries(data.map(toCountry));
+        } catch (error) {
+            // Крок 8: зрозуміле повідомлення користувачу + деталі для розробника
+            let message;
+            if (error.status === 404) {
+                message = COUNTRY_NOT_FOUND_MESSAGE;
+            } else if (error.status) {
+                message = COUNTRY_SERVER_ERROR_MESSAGE;
+            } else {
+                // fetch відхиляє Promise (TypeError), коли запит не дійшов до сервера
+                message = COUNTRY_NETWORK_ERROR_MESSAGE;
+            }
+
+            renderCountries([]); // Прибираємо застарілі результати попереднього запиту
+            showError(message);
+            console.error(error);
+        } finally {
+            // Крок 7: стан завантаження зникає і за успіху, і за помилки
+            showLoading(false);
         }
+    }
 
-        // Крок 5: розбір тіла відповіді як JSON
-        const data = await response.json();
-        console.log(data);
-
-        // Додатковий захист: порожній масив теж означає «нічого не знайдено»
-        if (!Array.isArray(data) || data.length === 0) {
-            const error = new Error('countries.dev повернув порожній результат');
-            error.status = 404;
-            throw error;
-        }
-
-        // Крок 6: виведення в DOM через спільну функцію рендеру
-        renderCountries(data.map(toCountry));
-    } catch (error) {
-        // Крок 8: зрозуміле повідомлення користувачу + деталі для розробника
-        let message;
-        if (error.status === 404) {
-            message = COUNTRY_NOT_FOUND_MESSAGE;
-        } else if (error.status) {
-            message = COUNTRY_SERVER_ERROR_MESSAGE;
+    // Повідомлення замість стандартного, якщо в полі лише пробіли (як у формі практикуму 8)
+    countryInput.addEventListener('input', () => {
+        if (countryInput.validity.patternMismatch) {
+            countryInput.setCustomValidity('Назва країни не може складатися лише з пробілів');
         } else {
-            // fetch відхиляє Promise (TypeError), коли запит не дійшов до сервера
-            message = COUNTRY_NETWORK_ERROR_MESSAGE;
+            countryInput.setCustomValidity('');
         }
+    });
 
-        renderCountries([]); // Прибираємо застарілі результати попереднього запиту
-        showError(message);
-        console.error(error);
-    } finally {
-        // Крок 7: стан завантаження зникає і за успіху, і за помилки
-        showLoading(false);
-    }
-}
+    // Пошук за назвою, введеною користувачем
+    countryForm.addEventListener('submit', event => {
+        event.preventDefault();
+        loadCountry(countryInput.value.trim());
+    });
 
-// Повідомлення замість стандартного, якщо в полі лише пробіли (як у формі практикуму 8)
-countryInput.addEventListener('input', () => {
-    if (countryInput.validity.patternMismatch) {
-        countryInput.setCustomValidity('Назва країни не може складатися лише з пробілів');
-    } else {
-        countryInput.setCustomValidity('');
-    }
-});
+    // Крок 10: повторний запит після збою без перезавантаження сторінки
+    countryRefreshButton.addEventListener('click', () => {
+        loadCountry(lastCountryQuery);
+    });
 
-// Пошук за назвою, введеною користувачем
-countryForm.addEventListener('submit', event => {
-    event.preventDefault();
-    loadCountry(countryInput.value.trim());
-});
-
-// Крок 10: повторний запит після збою без перезавантаження сторінки
-countryRefreshButton.addEventListener('click', () => {
+    // Перше завантаження при відкритті сторінки - останній запит (спочатку Austria)
+    countryInput.value = lastCountryQuery;
     loadCountry(lastCountryQuery);
-});
-
-// Перше завантаження при відкритті сторінки
-loadCountry(DEFAULT_COUNTRY);
+}
 
 // ===================== Практикум 11: маршрут подорожі в IndexedDB =====================
 
 // Крок 1: модель даних варіанта 10 - пункт маршруту (зупинка):
 // {
 //     id: number,        // унікальний ідентифікатор, Date.now() у момент створення; далі не змінюється
+//     tripId: number,    // практикум 13: id подорожі, до якої належить зупинка
 //     country: string,   // країна
 //     city: string,      // місто
 //     dateFrom: string,  // дата прибуття у форматі 'YYYY-MM-DD' (значення input type="date")
@@ -385,15 +378,25 @@ loadCountry(DEFAULT_COUNTRY);
 //     notes: string      // необов'язкові нотатки
 // }
 // Дати зберігаються рядками ISO, тож їх можна порівнювати як звичайні рядки.
+//
+// Практикум 13: подорож (раніше жила лише в data() Vue-застосунку) теж зберігається в IndexedDB:
+// { id, destination, days, budget, image, statusText, statusClass } - як у DEFAULT_TRIPS.
 
 // Ключ, під яким маршрут зберігався в localStorage (кроки 2-4), і прапорець міграції (крок 8)
 const STOPS_STORAGE_KEY = 'tripStops';
 const MIGRATION_FLAG_KEY = 'tripStopsMigrated';
 
-// Крок 5: схема IndexedDB - одна база, одне об'єктне сховище, ключ - поле id моделі
+// Крок 5: схема IndexedDB - одна база, сховище зупинок із ключем id.
+// Практикум 13: версію піднято до 2 - додано сховище подорожей trips та індекс зупинок за tripId
 const DB_NAME = 'TripPlannerDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STOPS_STORE = 'tripStops';
+const TRIPS_STORE = 'trips';
+const STOPS_BY_TRIP_INDEX = 'tripId';
+
+// Практикум 13: зупинки, створені до появи поля tripId, приписуються подорожі «Прага» (id 3) -
+// з Праги починається маршрут, складений у практикумах 11-12
+const LEGACY_TRIP_ID = 3;
 
 // Повідомлення для користувача (технічні деталі йдуть лише в консоль)
 const DB_OPEN_ERROR_MESSAGE =
@@ -401,6 +404,7 @@ const DB_OPEN_ERROR_MESSAGE =
     'Можливо, увімкнено режим приватного перегляду або збереження даних сайтів заборонене в налаштуваннях.';
 const DB_READ_ERROR_MESSAGE = 'Не вдалося прочитати маршрут зі сховища браузера. Перезавантажте сторінку.';
 const DB_WRITE_ERROR_MESSAGE = 'Не вдалося зберегти зміни маршруту. Спробуйте ще раз.';
+const TRIP_WRITE_ERROR_MESSAGE = 'Не вдалося зберегти подорож. Спробуйте ще раз.';
 
 // Крок 2: читання маршруту, збереженого в localStorage до переходу на IndexedDB.
 // Після кроку 9 функція потрібна лише як джерело одноразової міграції (крок 8).
@@ -420,7 +424,9 @@ let dbPromise = null;
 
 /**
  * Крок 6: відкриття бази TripPlannerDB. Якщо бази ще немає або її версія нижча за DB_VERSION,
- * спершу спрацьовує onupgradeneeded - лише там можна створити об'єктне сховище.
+ * спершу спрацьовує onupgradeneeded - лише там можна створювати сховища та індекси.
+ * Зміни схеми застосовуються по черзі від поточної версії бази до DB_VERSION, тож
+ * і нова база, і база з практикуму 11 (версія 1) приходять до однакового стану.
  * Повертає Promise з об'єктом IDBDatabase.
  */
 function openDB() {
@@ -434,15 +440,47 @@ function openDB() {
 
             const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-            request.onupgradeneeded = () => {
+            request.onupgradeneeded = event => {
                 const db = request.result;
-                // Перевірка не дає створити те саме сховище вдруге
-                if (!db.objectStoreNames.contains(STOPS_STORE)) {
+
+                // Версія 1 (практикум 11): сховище зупинок
+                if (event.oldVersion < 1) {
                     db.createObjectStore(STOPS_STORE, { keyPath: 'id' });
+                }
+
+                // Версія 2 (практикум 13): сторінка #/trip/:id має знаходити подорож за id навіть після
+                // перезавантаження, тому подорожі переїхали в окреме сховище. autoIncrement видає id
+                // новим подорожам; початкові записи мають власні id 1-3, і лічильник продовжить з 4
+                if (event.oldVersion < 2) {
+                    const tripsStore = db.createObjectStore(TRIPS_STORE, { keyPath: 'id', autoIncrement: true });
+                    DEFAULT_TRIPS.forEach(trip => tripsStore.add(trip));
+
+                    // Індекс за tripId дає змогу вибрати зупинки однієї подорожі без перебору всього сховища
+                    const stopsStore = request.transaction.objectStore(STOPS_STORE);
+                    stopsStore.createIndex(STOPS_BY_TRIP_INDEX, 'tripId');
+
+                    // Наявні зупинки без tripId отримують LEGACY_TRIP_ID у тій самій транзакції оновлення
+                    stopsStore.openCursor().onsuccess = cursorEvent => {
+                        const cursor = cursorEvent.target.result;
+                        if (!cursor) return;
+                        if (cursor.value.tripId === undefined) {
+                            cursor.update({ ...cursor.value, tripId: LEGACY_TRIP_ID });
+                        }
+                        cursor.continue();
+                    };
                 }
             };
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+                const db = request.result;
+                // Якщо в іншій вкладці відкрилася новіша версія застосунку, з'єднання закривається,
+                // щоб не блокувати її оновлення; наступний виклик openDB відкриє базу заново
+                db.onversionchange = () => {
+                    db.close();
+                    dbPromise = null;
+                };
+                resolve(db);
+            };
             request.onerror = () => reject(request.error);
         });
 
@@ -454,50 +492,66 @@ function openDB() {
     return dbPromise;
 }
 
-// Спільний запис для addItem і updateItem: put() створює новий запис або замінює наявний з тим самим id.
-// Promise виконується лише після oncomplete транзакції, тобто коли дані вже точно записані.
-async function putItem(stop) {
+/**
+ * Практикум 13: спільна обгортка для одного запиту в транзакції. makeRequest отримує
+ * об'єктне сховище й повертає IDBRequest; Promise виконується його результатом лише після
+ * oncomplete транзакції, тобто коли дані вже точно записані. CRUD-функції практикуму 11
+ * переписано через неї, бо такі самі операції знадобилися й для другого сховища - trips.
+ */
+async function runRequest(storeName, mode, makeRequest) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STOPS_STORE, 'readwrite');
-        tx.objectStore(STOPS_STORE).put(stop);
-        tx.oncomplete = () => resolve();
+        const tx = db.transaction(storeName, mode);
+        const request = makeRequest(tx.objectStore(storeName));
+        tx.oncomplete = () => resolve(request.result);
         tx.onerror = () => reject(tx.error);
         tx.onabort = () => reject(tx.error); // напр., QuotaExceededError скасовує транзакцію
     });
 }
 
-// Крок 7 (Create): додавання нової зупинки в транзакції readwrite
+// Крок 7 (Create): додавання нової зупинки в транзакції readwrite.
+// put() створює новий запис або замінює наявний з тим самим id
 function addItem(stop) {
-    return putItem(stop);
+    return runRequest(STOPS_STORE, 'readwrite', store => store.put(stop));
 }
 
 // Крок 7 (Update): оновлення зупинки - put із тим самим id замінює запис, а не створює дублікат
 function updateItem(stop) {
-    return putItem(stop);
+    return runRequest(STOPS_STORE, 'readwrite', store => store.put(stop));
 }
 
 // Крок 7 (Read): усі зупинки в транзакції readonly; getAll() повертає їх у порядку ключа id
-async function getAllItems() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STOPS_STORE, 'readonly');
-        const request = tx.objectStore(STOPS_STORE).getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+function getAllItems() {
+    return runRequest(STOPS_STORE, 'readonly', store => store.getAll());
 }
 
 // Крок 7 (Delete): видалення зупинки за ключем id в транзакції readwrite
-async function deleteItem(id) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STOPS_STORE, 'readwrite');
-        tx.objectStore(STOPS_STORE).delete(id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error);
-    });
+function deleteItem(id) {
+    return runRequest(STOPS_STORE, 'readwrite', store => store.delete(id));
+}
+
+// Практикум 13: зупинки однієї подорожі - вибірка через індекс tripId
+function getStopsByTrip(tripId) {
+    return runRequest(STOPS_STORE, 'readonly', store => store.index(STOPS_BY_TRIP_INDEX).getAll(tripId));
+}
+
+// Практикум 13: операції зі сховищем подорожей
+function getAllTrips() {
+    return runRequest(TRIPS_STORE, 'readonly', store => store.getAll());
+}
+
+// Повертає подорож або undefined, якщо запису з таким id немає
+function getTrip(id) {
+    return runRequest(TRIPS_STORE, 'readonly', store => store.get(id));
+}
+
+// add() без id - IndexedDB сама видає наступний ключ і повертає його
+function addTrip(trip) {
+    return runRequest(TRIPS_STORE, 'readwrite', store => store.add(trip));
+}
+
+function updateTrip(trip) {
+    return runRequest(TRIPS_STORE, 'readwrite', store => store.put(trip));
 }
 
 /**
@@ -518,7 +572,8 @@ async function migrateFromLocalStorage() {
 
     if (existingStops.length === 0 && legacyStops.length > 0) {
         for (const stop of legacyStops) {
-            await addItem(stop);
+            // Практикум 13: у localStorage зупинки зберігалися без прив'язки до подорожі
+            await addItem({ ...stop, tripId: stop.tripId ?? LEGACY_TRIP_ID });
             migratedCount++;
         }
     }
@@ -526,6 +581,32 @@ async function migrateFromLocalStorage() {
     // Прапорець ставимо лише після успішного перенесення всіх записів
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
     return migratedCount;
+}
+
+/**
+ * Підготовка сховища під час запуску застосунку: відкриття бази (з оновленням схеми)
+ * і міграція з localStorage. Практикум 13: раніше це робив mounted() застосунку маршруту,
+ * але тепер маршрут монтується під час кожного відкриття сторінки подорожі, а міграція
+ * має виконатися один раз - до першого рендеру будь-якої сторінки.
+ * Помилки лише записуються в консоль: сторінки самі покажуть повідомлення, якщо база недоступна.
+ */
+async function prepareStorage() {
+    try {
+        await openDB();
+    } catch (error) {
+        console.error('Помилка відкриття IndexedDB:', error);
+        return;
+    }
+
+    // Збій міграції (напр., заблокований localStorage) не повинен блокувати роботу з IndexedDB
+    try {
+        const migratedCount = await migrateFromLocalStorage();
+        if (migratedCount > 0) {
+            console.info(`Перенесено з localStorage в IndexedDB зупинок: ${migratedCount}`);
+        }
+    } catch (error) {
+        console.error('Міграцію маршруту з localStorage не виконано:', error);
+    }
 }
 
 // Порожній стан форми зупинки
@@ -537,7 +618,13 @@ const formatDate = isoDate => isoDate.split('-').reverse().join('.');
 // Сценарій варіанта: маршрут показується відсортованим за dateFrom (за однакових - за dateTo)
 const byDateFrom = (a, b) => a.dateFrom.localeCompare(b.dateFrom) || a.dateTo.localeCompare(b.dateTo);
 
-const routeApp = Vue.createApp({
+// Практикум 13: окремий Vue-застосунок routeApp став компонентом TripRoute. Він показує маршрут
+// лише однієї подорожі (проп tripId) і монтується всередині сторінки #/trip/:id
+const TripRoute = {
+    props: {
+        tripId: { type: Number, required: true }
+    },
+    template: '#trip-route-template',
     data() {
         return {
             // Крок 9: стартує порожнім - дані надходять асинхронно з IndexedDB у mounted()
@@ -552,7 +639,7 @@ const routeApp = Vue.createApp({
         };
     },
     computed: {
-        // Сортування виконується на клієнті над масивом, отриманим через getAllItems
+        // Сортування виконується на клієнті над масивом, отриманим через getStopsByTrip
         sortedStops() {
             return [...this.stops].sort(byDateFrom);
         },
@@ -585,25 +672,21 @@ const routeApp = Vue.createApp({
             return;
         }
 
-        // Збій міграції (напр., заблокований localStorage) не повинен блокувати роботу з IndexedDB
-        try {
-            const migratedCount = await migrateFromLocalStorage();
-            if (migratedCount > 0) {
-                console.info(`Перенесено з localStorage в IndexedDB зупинок: ${migratedCount}`);
-            }
-        } catch (error) {
-            console.error('Міграцію маршруту з localStorage не виконано:', error);
-        }
-
+        // Міграцію з localStorage перенесено в prepareStorage() (практикум 13)
         await this.loadStops();
         this.loading = false;
     },
     methods: {
         formatDate,
-        // Крок 9: єдине джерело даних списку - IndexedDB; викликається після кожної CRUD-операції
+        // Практикум 13: адреса сторінки деталей зупинки
+        stopLink(stop) {
+            return stopHref(this.tripId, stop.id);
+        },
+        // Крок 9: єдине джерело даних списку - IndexedDB; викликається після кожної CRUD-операції.
+        // Практикум 13: читаються лише зупинки поточної подорожі
         async loadStops() {
             try {
-                this.stops = await getAllItems();
+                this.stops = await getStopsByTrip(this.tripId);
             } catch (error) {
                 this.error = DB_READ_ERROR_MESSAGE;
                 console.error(error);
@@ -614,6 +697,7 @@ const routeApp = Vue.createApp({
             // Звичайний об'єкт, а не реактивний Proxy Vue: IndexedDB не вміє клонувати Proxy
             const stop = {
                 id: this.editingId ?? Date.now(),
+                tripId: this.tripId, // практикум 13: зупинка належить подорожі, сторінку якої відкрито
                 country: this.form.country.trim(),
                 city: this.form.city.trim(),
                 dateFrom: this.form.dateFrom,
@@ -687,13 +771,13 @@ const routeApp = Vue.createApp({
             this.mapPlaying = this.routeMap.isPlaying();
         }
     },
-    // Практикум 12, крок 8: якщо застосунок демонтують, цикл анімації зупиняється
+    // Практикум 12, крок 8: коли компонент демонтують, цикл анімації зупиняється.
+    // Практикум 13: це відбувається під час кожного переходу зі сторінки подорожі на іншу
     unmounted() {
         this.routeMap.destroy();
     }
-});
-// Монтування перенесено в кінець файлу (блок практикуму 12): mounted() використовує
-// константи міні-карти, які мають бути оголошені до запуску застосунку
+};
+
 
 // ===================== Практикум 12: міні-карта маршруту на Canvas =====================
 
@@ -1047,5 +1131,380 @@ function createRouteMap(canvas) {
     };
 }
 
-// Запуск застосунку маршруту (практикум 11) - після оголошення всіх констант міні-карти
-routeApp.mount('#trip-route');
+// ===================== Практикум 13: SPA та клієнтська маршрутизація =====================
+
+// Крок 1: обрано hash-based роутинг (location.hash + hashchange). Частина адреси після #
+// не надсилається на сервер, тож застосунок однаково працює з Live Server, з file:// і на
+// статичному хостингу без fallback-налаштування. Крім того, відносні шляхи css/style.css,
+// js/app.js та assets/img/... не ламаються на вкладених адресах на кшталт #/trip/3/stop/17,
+// а пряме відкриття такої адреси чи F5 на ній завжди повертає той самий index.html.
+
+// Крок 2: спільний контейнер, у який рендеряться всі «сторінки» застосунку
+const appContainer = document.querySelector('#app');
+const navLinks = document.querySelectorAll('header nav a[data-nav]');
+const APP_TITLE = 'Планувальник подорожей';
+const PAGE_LOAD_ERROR_MESSAGE =
+    'Не вдалося прочитати дані зі сховища браузера. Перезавантажте сторінку або перевірте, ' +
+    'чи не заборонено збереження даних сайтів у налаштуваннях браузера.';
+
+// Адреси сторінок формуються лише тут - компоненти не складають рядки шляхів самостійно
+function tripHref(tripId) {
+    return `#/trip/${tripId}`;
+}
+
+function stopHref(tripId, stopId) {
+    return `#/trip/${tripId}/stop/${stopId}`;
+}
+
+// Параметри маршруту - рядки, а ключі в IndexedDB - цілі числа. Некоректне значення
+// (напр. #/trip/abc) перетворюється на null, і view показує «Не знайдено», а не передає
+// NaN в IndexedDB, яка на такий ключ кидає DataError
+const parseId = value => (/^\d+$/.test(value) ? Number(value) : null);
+
+// ---------- Компоненти сторінок: перевикористовують уже написані компоненти й функції ----------
+
+// Сторінка «/»: колишній tripsApp (практикум 10) - список карток TripCard і форма практикуму 8
+const HomePage = {
+    components: { TripCard },
+    template: '#home-page-template',
+    props: {
+        initialTrips: { type: Array, required: true }
+    },
+    data() {
+        return {
+            trips: this.initialTrips,
+            error: ''
+        };
+    },
+    mounted() {
+        // Форма вже є в DOM - підключаємо до неї обробники практикуму 8
+        setupTripForm(this.$refs.tripForm, this.createTrip);
+    },
+    methods: {
+        // Нова подорож записується в IndexedDB, після чого список перечитується зі сховища
+        async createTrip(trip) {
+            this.error = '';
+            try {
+                await addTrip(trip);
+                this.trips = await getAllTrips();
+                return true;
+            } catch (error) {
+                this.error = TRIP_WRITE_ERROR_MESSAGE;
+                console.error(error);
+                return false;
+            }
+        }
+    }
+};
+
+// Сторінка «/trip/:id»: секція деталей обраної подорожі (практикум 10) і маршрут (TripRoute)
+const TripPage = {
+    components: { TripRoute },
+    template: '#trip-page-template',
+    props: {
+        initialTrip: { type: Object, required: true }
+    },
+    data() {
+        return {
+            trip: { ...this.initialTrip },
+            error: ''
+        };
+    },
+    computed: {
+        dailyCost() {
+            return costPerDay(this.trip);
+        }
+    },
+    methods: {
+        // Зміна тривалості подорожі (практикум 10). Практикум 13: зміна зберігається в IndexedDB,
+        // тож нова тривалість видна і в картці на головній сторінці, і після перезавантаження
+        async changeDays(delta) {
+            const previousDays = this.trip.days;
+            this.trip.days = Math.max(1, previousDays + delta);
+            this.error = '';
+            try {
+                await updateTrip({ ...this.trip });
+            } catch (error) {
+                this.trip.days = previousDays;
+                this.error = TRIP_WRITE_ERROR_MESSAGE;
+                console.error(error);
+            }
+        }
+    }
+};
+
+// Сторінка «/trip/:id/stop/:stopId»: деталі одного пункту маршруту.
+// Форматування дат і тривалість зупинки - ті самі функції, що й у списку та міні-карті
+const StopPage = {
+    template: '#stop-page-template',
+    props: {
+        trip: { type: Object, required: true },
+        stop: { type: Object, required: true },
+        position: { type: Number, required: true },
+        total: { type: Number, required: true },
+        prevStop: { type: Object, default: null },
+        nextStop: { type: Object, default: null }
+    },
+    computed: {
+        tripLink() {
+            return tripHref(this.trip.id);
+        },
+        stayDays() {
+            return stayDays(this.stop);
+        }
+    },
+    methods: {
+        formatDate,
+        stopLink(stop) {
+            return stopHref(this.trip.id, stop.id);
+        }
+    }
+};
+
+// ---------- Крок 5: рендер сторінки в спільний контейнер ----------
+
+// Vue-застосунок поточної сторінки (null, якщо сторінка відрендерена без Vue)
+let currentApp = null;
+
+// «Очищення» контейнера перед рендером нової сторінки. Vue-застосунок попередньої сторінки
+// демонтується: так спрацьовують хуки unmounted, зокрема зупинка анімації міні-карти (практикум 12)
+function clearView() {
+    if (currentApp) {
+        currentApp.unmount();
+        currentApp = null;
+    }
+    appContainer.innerHTML = '';
+}
+
+// Сторінка на Vue: новий застосунок із компонентом сторінки та даними з IndexedDB у props
+function mountView(component, props) {
+    clearView();
+    currentApp = Vue.createApp(component, props);
+    currentApp.mount(appContainer);
+}
+
+// Сторінка без Vue: копія вмісту <template> зі статичною розміткою
+function showTemplate(templateSelector) {
+    clearView();
+    appContainer.append(document.querySelector(templateSelector).content.cloneNode(true));
+}
+
+// ---------- Крок 5, 8, 9: view-функції ----------
+// Кожна view отримує { params, path, isCurrent } і повертає заголовок сторінки для document.title.
+// Дані читаються до очищення контейнера, тому під час читання на екрані лишається попередня сторінка.
+// isCurrent() стає false, якщо поки дані читалися, користувач уже перейшов на іншу адресу -
+// тоді застаріла view нічого не рендерить і повертає null.
+
+async function renderHomePage({ isCurrent }) {
+    const trips = await getAllTrips();
+    if (!isCurrent()) return null;
+
+    mountView(HomePage, { initialTrips: trips });
+    return 'Мої подорожі';
+}
+
+async function renderTripPage({ params, path, isCurrent }) {
+    const tripId = parseId(params.id);
+    const trip = tripId === null ? undefined : await getTrip(tripId);
+    if (!isCurrent()) return null;
+
+    if (!trip) {
+        return renderNotFoundPage({ path });
+    }
+    mountView(TripPage, { initialTrip: trip });
+    return trip.destination;
+}
+
+// Крок 8: сторінка деталей знаходить один запис за id і показує лише його
+async function renderStopPage({ params, path, isCurrent }) {
+    const tripId = parseId(params.id);
+    const stopId = parseId(params.stopId);
+    if (tripId === null || stopId === null) {
+        return renderNotFoundPage({ path });
+    }
+
+    // Зупинки подорожі потрібні цілком: з них визначаються номер зупинки та сусідні пункти маршруту
+    const [trip, tripStops] = await Promise.all([getTrip(tripId), getStopsByTrip(tripId)]);
+    if (!isCurrent()) return null;
+
+    const stops = tripStops.sort(byDateFrom);
+    const index = stops.findIndex(stop => stop.id === stopId);
+
+    // Зупинка має не лише існувати, а й належати саме подорожі з адреси
+    if (!trip || index === -1) {
+        return renderNotFoundPage({ path });
+    }
+
+    const stop = stops[index];
+    mountView(StopPage, {
+        trip,
+        stop,
+        position: index + 1,
+        total: stops.length,
+        prevStop: stops[index - 1] ?? null,
+        nextStop: stops[index + 1] ?? null
+    });
+    return `${stop.city}, ${stop.country}`;
+}
+
+function renderCountriesPage() {
+    showTemplate('#countries-page-template');
+    setupCountryLookup(appContainer.querySelector('.country-section'));
+    return 'Довідка про країни';
+}
+
+// Крок 9: неіснуючий маршрут чи запис - сторінка «Не знайдено» з посиланням на головну
+function renderNotFoundPage({ path }) {
+    showTemplate('#not-found-page-template');
+    // Адреса вставляється як текст, а не через innerHTML, тож розмітка з адресного рядка не виконається
+    let readablePath = path;
+    try {
+        readablePath = decodeURI(path);
+    } catch {
+        // Некоректне %-кодування - показуємо адресу як є
+    }
+    appContainer.querySelector('.page-message__path').textContent = `#${readablePath}`;
+    return 'Сторінку не знайдено';
+}
+
+function renderErrorPage(message) {
+    showTemplate('#error-page-template');
+    appContainer.querySelector('.load-error').textContent = message;
+    return 'Помилка';
+}
+
+// ---------- Крок 3, 4: таблиця маршрутів і зіставлення шляху ----------
+
+// Крок 3, 11: таблиця маршрутів (варіант 10). Кожен запис - патерн шляху після #, view-функція,
+// що рендерить сторінку в #app, і розділ меню (nav), який підсвічується на цій сторінці.
+// Сегменти з двокрапкою - параметри: matchRoute передає їхні значення у view як params.
+//   /                        - список поїздок
+//   /trip/:id                - пункти маршруту конкретної поїздки
+//   /trip/:id/stop/:stopId   - деталі одного пункту (два параметри в одному патерні)
+//   /countries               - довідка про країну з API (практикум 9), колишній розділ сторінки
+const routes = [
+    { path: '/', view: renderHomePage, nav: '/' },
+    { path: '/trip/:id', view: renderTripPage, nav: '/' },
+    { path: '/trip/:id/stop/:stopId', view: renderStopPage, nav: '/' },
+    { path: '/countries', view: renderCountriesPage, nav: '/countries' }
+];
+
+// Крок 4: шлях і патерн розбиваються на сегменти по «/». Маршрут підходить, якщо кількість
+// сегментів однакова, а кожен сегмент збігається буквально або є параметром (:name).
+// Повертає { route, params } або null, якщо жоден маршрут не підійшов
+function matchRoute(path) {
+    const pathParts = path.split('/').filter(Boolean);
+
+    for (const route of routes) {
+        const routeParts = route.path.split('/').filter(Boolean);
+        if (routeParts.length !== pathParts.length) continue;
+
+        const params = {};
+        const isMatch = routeParts.every((part, i) => {
+            if (part.startsWith(':')) {
+                params[part.slice(1)] = pathParts[i];
+                return true;
+            }
+            return part === pathParts[i];
+        });
+
+        if (isMatch) return { route, params };
+    }
+    return null; // маршрут не знайдено - сторінка 404
+}
+
+// Поточний шлях - частина адреси після #. Порожній хеш відповідає головній сторінці
+function getCurrentPath() {
+    return location.hash.slice(1) || '/';
+}
+
+// ---------- Рендер за поточною адресою ----------
+
+// Номер останнього запущеного рендеру: за ним view-функції розпізнають, що вони застаріли
+let renderToken = 0;
+let isFirstRender = true;
+
+async function render() {
+    const path = getCurrentPath();
+    const token = ++renderToken;
+    const isCurrent = () => token === renderToken;
+
+    const match = matchRoute(path);
+    updateNav(match ? match.route.nav : null);
+
+    let title;
+    try {
+        title = match
+            ? await match.route.view({ params: match.params, path, isCurrent })
+            : renderNotFoundPage({ path });
+    } catch (error) {
+        console.error('Помилка рендеру сторінки:', error);
+        if (!isCurrent()) return;
+        title = renderErrorPage(PAGE_LOAD_ERROR_MESSAGE);
+    }
+
+    if (title === null || !isCurrent()) return;
+    afterRender(title);
+}
+
+// Підсвічування пункту меню розділу, до якого належить поточна сторінка
+function updateNav(activeNav) {
+    navLinks.forEach(link => {
+        if (link.dataset.nav === activeNav) {
+            link.setAttribute('aria-current', 'page');
+        } else {
+            link.removeAttribute('aria-current');
+        }
+    });
+}
+
+// Те, що браузер робить сам під час звичайного переходу між сторінками: новий заголовок вкладки,
+// прокрутка до початку і (крім першого рендеру) фокус на заголовку нової сторінки - так читач
+// екрана оголосить її, а клавіатурна навігація почнеться з початку вмісту
+function afterRender(title) {
+    document.title = `${title} | ${APP_TITLE}`;
+
+    if (isFirstRender) {
+        isFirstRender = false;
+        return;
+    }
+
+    window.scrollTo(0, 0);
+    const heading = appContainer.querySelector('h2');
+    if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+    }
+}
+
+// ---------- Крок 6, 7: навігація ----------
+
+// Крок 6: програмний перехід. Зміна хеша додає запис в історію браузера й породжує hashchange,
+// а рендер запускає обробник із кроку 7. Якщо адреса не змінилася (повторний клік на пункт меню
+// поточної сторінки), hashchange не настане - тоді сторінку перемальовуємо самі
+function navigate(path) {
+    if (path === getCurrentPath()) {
+        render();
+        return;
+    }
+    location.hash = path;
+}
+
+// Крок 6: перехоплення кліків по внутрішніх посиланнях (меню, картки, «назад» до подорожі тощо).
+// Делегування на document працює і для посилань, які з'являться після рендеру нових сторінок.
+// Клік із Ctrl/Cmd/Shift/Alt лишається за браузером, тож посилання можна відкрити в новій вкладці
+document.addEventListener('click', event => {
+    const link = event.target.closest('a[data-link]');
+    if (!link) return;
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+
+    event.preventDefault();
+    navigate(link.getAttribute('href').replace(/^#/, ''));
+});
+
+// Крок 7: кнопки «назад»/«вперед» браузера змінюють хеш - сторінка перемальовується за новою адресою
+window.addEventListener('hashchange', render);
+
+// Запуск: база відкривається (і за потреби оновлюється та мігрує) один раз, після чого
+// рендериться сторінка з поточної адреси - зокрема відкритої напряму чи після F5
+prepareStorage().then(render);

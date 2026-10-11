@@ -11,181 +11,20 @@
 <body>
 <header>
     <h1>Планувальник подорожей</h1>
-    <nav>
-        <a href="#trip-items">Мої подорожі</a>
-        <a href="#trip-details">Деталі подорожі</a>
-        <a href="#trip-add">Нова подорож</a>
-        <a href="#trip-route">Маршрут</a>
-        <a href="#country-info">Довідка про країну</a>
+    <!-- Практикум 13, крок 6: пункти меню - внутрішні посилання клієнтського роутера (data-link).
+         data-nav - розділ, який підсвічується через aria-current на сторінках цього розділу -->
+    <nav aria-label="Розділи застосунку">
+        <a href="#/" data-link data-nav="/">Мої подорожі</a>
+        <a href="#/countries" data-link data-nav="/countries">Довідка про країни</a>
     </nav>
 </header>
 <div class="wrap">
-    <main>
-        <!-- Практикум 10: ділянку списку й деталей подорожей рендерить Vue-застосунок -->
-        <div id="trips-app" v-cloak>
-            <section id="trip-items">
-                <h2>Мої подорожі</h2>
-                <p id="trips-count">Загальна кількість подорожей: {{ trips.length }}</p>
-                <div id="trips-list" class="cards">
-                    <!-- Крок 5: рендер циклом v-for з :key за унікальним id -->
-                    <trip-card
-                            v-for="trip in trips"
-                            :key="trip.id"
-                            :id="trip.id"
-                            :destination="trip.destination"
-                            :days="trip.days"
-                            :budget="trip.budget"
-                            :image="trip.image"
-                            :status-text="trip.statusText"
-                            :status-class="trip.statusClass"
-                            :selected="trip.id === selectedId"
-                            @select="selectTrip"
-                    ></trip-card>
-                </div>
-            </section>
-            <section id="trip-details">
-                <h2>Деталі обраної подорожі</h2>
-                <div id="trip-details-content">
-                    <template v-if="selectedTrip">
-                        <span class="status" :class="selectedTrip.statusClass">{{ selectedTrip.statusText }}</span>
-                        <h3>{{ selectedTrip.destination }}</h3>
-                        <ul class="details-list">
-                            <li>
-                                <span>Тривалість:</span>
-                                <span class="day-stepper">
-                                    <button type="button" @click="changeDays(-1)"
-                                            :disabled="selectedTrip.days <= 1"
-                                            aria-label="Зменшити тривалість на 1 день">−</button>
-                                    <span class="budget-amount">{{ selectedTrip.days }} днів</span>
-                                    <button type="button" @click="changeDays(1)"
-                                            aria-label="Збільшити тривалість на 1 день">+</button>
-                                </span>
-                            </li>
-                            <li><span>Бюджет:</span> <span class="budget-amount">{{ selectedTrip.budget }} грн</span></li>
-                            <li><span>Бюджет на день:</span> <span class="budget-amount">{{ selectedCostPerDay }} грн</span></li>
-                        </ul>
-                    </template>
-                    <p v-else>Натисніть на картку подорожі, щоб переглянути її деталі.</p>
-                </div>
-            </section>
-        </div>
-        <section id="trip-add">
-            <h2>Нова подорож</h2>
-            <form id="trip-form" class="trip-form">
-                <div class="form-field">
-                    <label for="destination">Напрямок</label>
-                    <input type="text" id="destination" name="destination"
-                           required pattern=".*\S.*" placeholder="Наприклад, Краків">
-                </div>
-                <div class="form-field">
-                    <label for="days">Кількість днів</label>
-                    <input type="number" id="days" name="days"
-                           required min="1" step="1" placeholder="5">
-                </div>
-                <div class="form-field">
-                    <label for="budget">Бюджет, грн</label>
-                    <input type="number" id="budget" name="budget"
-                           required min="0" step="1" placeholder="12000">
-                </div>
-                <p class="form-preview">
-                    Бюджет на день: <output id="cost-preview" for="days budget">—</output>
-                </p>
-                <p id="cost-warning" class="form-warning" aria-live="polite"></p>
-                <button type="submit">Додати подорож</button>
-            </form>
-        </section>
-        <!-- Практикум 11: маршрут подорожі, що зберігається в браузері (окремий Vue-застосунок) -->
-        <section id="trip-route" v-cloak>
-            <h2>Маршрут подорожі</h2>
-            <form ref="stopForm" class="trip-form" @submit.prevent="submitStop">
-                <div class="form-field">
-                    <label for="stop-country">Країна</label>
-                    <input type="text" id="stop-country" v-model="form.country"
-                           required pattern=".*\S.*" placeholder="Наприклад, Польща"
-                           @input="checkBlank($event, 'Країна не може складатися лише з пробілів')">
-                </div>
-                <div class="form-field">
-                    <label for="stop-city">Місто</label>
-                    <input type="text" id="stop-city" v-model="form.city"
-                           required pattern=".*\S.*" placeholder="Наприклад, Краків"
-                           @input="checkBlank($event, 'Місто не може складатися лише з пробілів')">
-                </div>
-                <div class="form-field">
-                    <label for="stop-date-from">Дата прибуття</label>
-                    <input type="date" id="stop-date-from" v-model="form.dateFrom" required>
-                </div>
-                <div class="form-field">
-                    <label for="stop-date-to">Дата від'їзду</label>
-                    <!-- Дата від'їзду не може бути раніше за дату прибуття -->
-                    <input type="date" id="stop-date-to" v-model="form.dateTo" required :min="form.dateFrom">
-                </div>
-                <div class="form-field">
-                    <label for="stop-notes">Нотатки</label>
-                    <textarea id="stop-notes" v-model="form.notes" rows="3" maxlength="500"
-                              placeholder="Наприклад, екскурсія Вавелем"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" :disabled="!storageReady || saving">
-                        {{ isEditing ? 'Зберегти зміни' : 'Додати зупинку' }}
-                    </button>
-                    <button type="button" v-if="isEditing" class="button--secondary" @click="resetForm">Скасувати</button>
-                </div>
-            </form>
-            <p v-if="loading" class="load-status" aria-live="polite">Завантаження маршруту…</p>
-            <p v-if="error" class="load-error" role="alert">{{ error }}</p>
-            <p v-if="storageReady && !loading && sortedStops.length === 0" class="route-empty">
-                Маршрут поки порожній — додайте першу зупинку.
-            </p>
-            <!-- Практикум 12: міні-карта маршруту на Canvas. Атрибути width/height задають логічний
-                 розмір полотна; у скрипті буфер збільшується під щільність пікселів екрана -->
-            <figure class="route-map">
-                <figcaption>Міні-карта маршруту</figcaption>
-                <canvas ref="routeCanvas" class="route-map__canvas" width="640" height="260" role="img"
-                        aria-label="Міні-карта маршруту">
-                    Ваш браузер не підтримує Canvas - маршрут доступний у списку зупинок нижче.
-                </canvas>
-                <div class="form-actions">
-                    <button type="button" class="button--secondary" @click="toggleMap"
-                            :disabled="sortedStops.length < 2" :aria-pressed="String(mapPlaying)">
-                        {{ mapPlaying ? 'Зупинити анімацію' : 'Запустити анімацію' }}
-                    </button>
-                </div>
-            </figure>
-            <!-- Список упорядкований: зупинки йдуть за датою прибуття (dateFrom) -->
-            <ol class="cards route-list">
-                <li v-for="(stop, index) in sortedStops" :key="stop.id"
-                    class="card card--stop" :class="{ 'card--selected': stop.id === editingId }">
-                    <div>
-                        <span class="status status--active">Зупинка {{ index + 1 }}</span>
-                        <h3>{{ stop.city }}, {{ stop.country }}</h3>
-                        <p>{{ formatDate(stop.dateFrom) }} – {{ formatDate(stop.dateTo) }}</p>
-                        <p v-if="stop.notes" class="stop-notes">{{ stop.notes }}</p>
-                        <div class="stop-actions">
-                            <button type="button" @click="startEdit(stop)">Редагувати</button>
-                            <button type="button" class="button--danger" @click="removeStop(stop.id)">Видалити</button>
-                        </div>
-                    </div>
-                </li>
-            </ol>
-        </section>
-        <section id="country-info">
-            <h2>Довідка про країну</h2>
-            <form id="country-form" class="country-form">
-                <div class="form-field">
-                    <label for="country-query">Назва країни (англійською)</label>
-                    <input type="text" id="country-query" name="country"
-                           required pattern=".*\S.*" value="Austria" placeholder="Наприклад, Austria">
-                </div>
-                <div class="country-actions">
-                    <button type="submit">Знайти</button>
-                    <button type="button" id="country-refresh" class="button--secondary">Оновити</button>
-                </div>
-            </form>
-            <p id="country-loading" class="load-status" aria-live="polite"></p>
-            <p id="country-error" class="load-error" role="alert"></p>
-            <p id="country-count"></p>
-            <div id="country-list" class="cards"></div>
-        </section>
+    <!-- Практикум 13, крок 2: єдиний контейнер, у який роутер рендерить усі «сторінки» застосунку -->
+    <main id="app">
+        <p class="load-status">Завантаження…</p>
+        <noscript>
+            <p class="load-error">Для роботи планувальника потрібен увімкнений JavaScript.</p>
+        </noscript>
     </main>
     <aside>
         <h2>Бюджет подорожі</h2>
@@ -198,6 +37,232 @@
         </ul>
     </aside>
 </div>
+
+<!-- ===================== Практикум 13: шаблони сторінок =====================
+     Елементи <template> браузер не показує. Розмітку секцій, яка раніше стояла прямо в <main>,
+     перенесено сюди без змін логіки: шаблони з {{ }} компілює Vue під час монтування сторінки,
+     а звичайні шаблони клонують view-функції роутера. -->
+
+<!-- Сторінка «/»: список подорожей (практикум 10) і форма нової подорожі (практикум 8) -->
+<template id="home-page-template">
+    <section aria-labelledby="trips-title">
+        <h2 id="trips-title">Мої подорожі</h2>
+        <p id="trips-count">Загальна кількість подорожей: {{ trips.length }}</p>
+        <div class="cards">
+            <!-- Практикум 10, крок 5: рендер циклом v-for з :key за унікальним id.
+                 Практикум 13: кожна картка веде на сторінку #/trip/:id -->
+            <trip-card
+                    v-for="trip in trips"
+                    :key="trip.id"
+                    :id="trip.id"
+                    :destination="trip.destination"
+                    :days="trip.days"
+                    :budget="trip.budget"
+                    :image="trip.image"
+                    :status-text="trip.statusText"
+                    :status-class="trip.statusClass"
+            ></trip-card>
+        </div>
+    </section>
+    <section aria-labelledby="trip-add-title">
+        <h2 id="trip-add-title">Нова подорож</h2>
+        <!-- Обробники форми (практикум 8) підключає setupTripForm після монтування сторінки -->
+        <form ref="tripForm" class="trip-form">
+            <div class="form-field">
+                <label for="destination">Напрямок</label>
+                <input type="text" id="destination" name="destination"
+                       required pattern=".*\S.*" placeholder="Наприклад, Краків">
+            </div>
+            <div class="form-field">
+                <label for="days">Кількість днів</label>
+                <input type="number" id="days" name="days"
+                       required min="1" step="1" placeholder="5">
+            </div>
+            <div class="form-field">
+                <label for="budget">Бюджет, грн</label>
+                <input type="number" id="budget" name="budget"
+                       required min="0" step="1" placeholder="12000">
+            </div>
+            <p class="form-preview">
+                Бюджет на день: <output id="cost-preview" for="days budget">—</output>
+            </p>
+            <p id="cost-warning" class="form-warning" aria-live="polite"></p>
+            <p v-if="error" class="load-error" role="alert">{{ error }}</p>
+            <button type="submit">Додати подорож</button>
+        </form>
+    </section>
+</template>
+
+<!-- Сторінка «/trip/:id»: деталі подорожі (практикум 10) і її маршрут (практикуми 11-12) -->
+<template id="trip-page-template">
+    <p class="back-link"><a href="#/" data-link>← Усі подорожі</a></p>
+    <section aria-labelledby="trip-title">
+        <span class="status" :class="trip.statusClass">{{ trip.statusText }}</span>
+        <h2 id="trip-title">{{ trip.destination }}</h2>
+        <ul class="details-list">
+            <li>
+                <span>Тривалість:</span>
+                <span class="day-stepper">
+                    <button type="button" @click="changeDays(-1)"
+                            :disabled="trip.days <= 1"
+                            aria-label="Зменшити тривалість на 1 день">−</button>
+                    <span class="budget-amount">{{ trip.days }} днів</span>
+                    <button type="button" @click="changeDays(1)"
+                            aria-label="Збільшити тривалість на 1 день">+</button>
+                </span>
+            </li>
+            <li><span>Бюджет:</span> <span class="budget-amount">{{ trip.budget }} грн</span></li>
+            <li><span>Бюджет на день:</span> <span class="budget-amount">{{ dailyCost }} грн</span></li>
+        </ul>
+        <p v-if="error" class="load-error" role="alert">{{ error }}</p>
+    </section>
+    <trip-route :trip-id="trip.id"></trip-route>
+</template>
+
+<!-- Компонент маршруту подорожі (практикум 11) з міні-картою (практикум 12) -->
+<template id="trip-route-template">
+    <section aria-labelledby="route-title">
+        <h2 id="route-title">Маршрут подорожі</h2>
+        <form ref="stopForm" class="trip-form" @submit.prevent="submitStop">
+            <div class="form-field">
+                <label for="stop-country">Країна</label>
+                <input type="text" id="stop-country" v-model="form.country"
+                       required pattern=".*\S.*" placeholder="Наприклад, Польща"
+                       @input="checkBlank($event, 'Країна не може складатися лише з пробілів')">
+            </div>
+            <div class="form-field">
+                <label for="stop-city">Місто</label>
+                <input type="text" id="stop-city" v-model="form.city"
+                       required pattern=".*\S.*" placeholder="Наприклад, Краків"
+                       @input="checkBlank($event, 'Місто не може складатися лише з пробілів')">
+            </div>
+            <div class="form-field">
+                <label for="stop-date-from">Дата прибуття</label>
+                <input type="date" id="stop-date-from" v-model="form.dateFrom" required>
+            </div>
+            <div class="form-field">
+                <label for="stop-date-to">Дата від'їзду</label>
+                <!-- Дата від'їзду не може бути раніше за дату прибуття -->
+                <input type="date" id="stop-date-to" v-model="form.dateTo" required :min="form.dateFrom">
+            </div>
+            <div class="form-field">
+                <label for="stop-notes">Нотатки</label>
+                <textarea id="stop-notes" v-model="form.notes" rows="3" maxlength="500"
+                          placeholder="Наприклад, екскурсія Вавелем"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" :disabled="!storageReady || saving">
+                    {{ isEditing ? 'Зберегти зміни' : 'Додати зупинку' }}
+                </button>
+                <button type="button" v-if="isEditing" class="button--secondary" @click="resetForm">Скасувати</button>
+            </div>
+        </form>
+        <p v-if="loading" class="load-status" aria-live="polite">Завантаження маршруту…</p>
+        <p v-if="error" class="load-error" role="alert">{{ error }}</p>
+        <p v-if="storageReady && !loading && sortedStops.length === 0" class="route-empty">
+            Маршрут поки порожній — додайте першу зупинку.
+        </p>
+        <!-- Практикум 12: міні-карта маршруту на Canvas. Атрибути width/height задають логічний
+             розмір полотна; у скрипті буфер збільшується під щільність пікселів екрана -->
+        <figure class="route-map">
+            <figcaption>Міні-карта маршруту</figcaption>
+            <canvas ref="routeCanvas" class="route-map__canvas" width="640" height="260" role="img"
+                    aria-label="Міні-карта маршруту">
+                Ваш браузер не підтримує Canvas - маршрут доступний у списку зупинок нижче.
+            </canvas>
+            <div class="form-actions">
+                <button type="button" class="button--secondary" @click="toggleMap"
+                        :disabled="sortedStops.length < 2" :aria-pressed="String(mapPlaying)">
+                    {{ mapPlaying ? 'Зупинити анімацію' : 'Запустити анімацію' }}
+                </button>
+            </div>
+        </figure>
+        <!-- Список упорядкований: зупинки йдуть за датою прибуття (dateFrom) -->
+        <ol class="cards route-list">
+            <li v-for="(stop, index) in sortedStops" :key="stop.id"
+                class="card card--stop" :class="{ 'card--selected': stop.id === editingId }">
+                <div>
+                    <span class="status status--active">Зупинка {{ index + 1 }}</span>
+                    <!-- Практикум 13: назва зупинки веде на сторінку #/trip/:id/stop/:stopId -->
+                    <h3><a class="card__link" :href="stopLink(stop)" data-link>{{ stop.city }}, {{ stop.country }}</a></h3>
+                    <p>{{ formatDate(stop.dateFrom) }} – {{ formatDate(stop.dateTo) }}</p>
+                    <p v-if="stop.notes" class="stop-notes">{{ stop.notes }}</p>
+                    <div class="stop-actions">
+                        <button type="button" @click="startEdit(stop)">Редагувати</button>
+                        <button type="button" class="button--danger" @click="removeStop(stop.id)">Видалити</button>
+                    </div>
+                </div>
+            </li>
+        </ol>
+    </section>
+</template>
+
+<!-- Сторінка «/trip/:id/stop/:stopId»: деталі одного пункту маршруту -->
+<template id="stop-page-template">
+    <p class="back-link"><a :href="tripLink" data-link>← Подорож «{{ trip.destination }}»</a></p>
+    <section class="stop-details" aria-labelledby="stop-title">
+        <span class="status status--active">Зупинка {{ position }} з {{ total }}</span>
+        <h2 id="stop-title">{{ stop.city }}, {{ stop.country }}</h2>
+        <ul class="details-list">
+            <li><span>Дата прибуття:</span> <span class="budget-amount">{{ formatDate(stop.dateFrom) }}</span></li>
+            <li><span>Дата від'їзду:</span> <span class="budget-amount">{{ formatDate(stop.dateTo) }}</span></li>
+            <li><span>Тривалість зупинки:</span> <span class="budget-amount">{{ stayDays }} днів</span></li>
+        </ul>
+        <h3>Нотатки</h3>
+        <p v-if="stop.notes" class="stop-notes">{{ stop.notes }}</p>
+        <p v-else class="route-empty">Нотаток до цієї зупинки немає.</p>
+        <nav class="stop-pager" aria-label="Сусідні зупинки маршруту">
+            <a v-if="prevStop" class="stop-pager__prev" :href="stopLink(prevStop)" data-link>
+                ← Попередня: {{ prevStop.city }}
+            </a>
+            <a v-if="nextStop" class="stop-pager__next" :href="stopLink(nextStop)" data-link>
+                Наступна: {{ nextStop.city }} →
+            </a>
+        </nav>
+    </section>
+</template>
+
+<!-- Сторінка «/countries»: довідка про країну з зовнішнього API (практикум 9) -->
+<template id="countries-page-template">
+    <section class="country-section" aria-labelledby="country-title">
+        <h2 id="country-title">Довідка про країну</h2>
+        <form id="country-form" class="country-form">
+            <div class="form-field">
+                <label for="country-query">Назва країни (англійською)</label>
+                <input type="text" id="country-query" name="country"
+                       required pattern=".*\S.*" placeholder="Наприклад, Austria">
+            </div>
+            <div class="country-actions">
+                <button type="submit">Знайти</button>
+                <button type="button" id="country-refresh" class="button--secondary">Оновити</button>
+            </div>
+        </form>
+        <p id="country-loading" class="load-status" aria-live="polite"></p>
+        <p id="country-error" class="load-error" role="alert"></p>
+        <p id="country-count"></p>
+        <div id="country-list" class="cards"></div>
+    </section>
+</template>
+
+<!-- Крок 9: сторінка для неіснуючого маршруту чи запису -->
+<template id="not-found-page-template">
+    <section class="page-message" aria-labelledby="not-found-title">
+        <h2 id="not-found-title">Сторінку не знайдено</h2>
+        <p>За адресою <code class="page-message__path"></code> нічого немає. Можливо, подорож
+            чи зупинку видалено, або в посиланні є помилка.</p>
+        <p><a href="#/" data-link>Повернутися до списку подорожей</a></p>
+    </section>
+</template>
+
+<!-- Сторінка, яку роутер показує, якщо дані для сторінки не вдалося прочитати зі сховища -->
+<template id="error-page-template">
+    <section class="page-message" aria-labelledby="error-title">
+        <h2 id="error-title">Не вдалося відкрити сторінку</h2>
+        <p class="load-error" role="alert"></p>
+        <p><a href="#/" data-link>Повернутися до списку подорожей</a></p>
+    </section>
+</template>
+
 <footer>
     <p>Ілля Кліменко &copy; 2026</p>
 </footer>
