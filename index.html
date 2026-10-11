@@ -136,6 +136,21 @@
             <p v-if="storageReady && !loading && sortedStops.length === 0" class="route-empty">
                 Маршрут поки порожній — додайте першу зупинку.
             </p>
+            <!-- Практикум 12: міні-карта маршруту на Canvas. Атрибути width/height задають логічний
+                 розмір полотна; у скрипті буфер збільшується під щільність пікселів екрана -->
+            <figure class="route-map">
+                <figcaption>Міні-карта маршруту</figcaption>
+                <canvas ref="routeCanvas" class="route-map__canvas" width="640" height="260" role="img"
+                        aria-label="Міні-карта маршруту">
+                    Ваш браузер не підтримує Canvas - маршрут доступний у списку зупинок нижче.
+                </canvas>
+                <div class="form-actions">
+                    <button type="button" class="button--secondary" @click="toggleMap"
+                            :disabled="sortedStops.length < 2" :aria-pressed="String(mapPlaying)">
+                        {{ mapPlaying ? 'Зупинити анімацію' : 'Запустити анімацію' }}
+                    </button>
+                </div>
+            </figure>
             <!-- Список упорядкований: зупинки йдуть за датою прибуття (dateFrom) -->
             <ol class="cards route-list">
                 <li v-for="(stop, index) in sortedStops" :key="stop.id"

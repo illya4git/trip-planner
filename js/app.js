@@ -547,7 +547,8 @@ const routeApp = Vue.createApp({
             storageReady: false,  // true після успішного openDB()
             loading: true,
             saving: false,
-            error: ''
+            error: '',
+            mapPlaying: false     // практикум 12: чи відтворюється анімація міні-карти
         };
     },
     computed: {
@@ -559,7 +560,20 @@ const routeApp = Vue.createApp({
             return this.editingId !== null;
         }
     },
+    // Практикум 12, крок 6: будь-яка зміна маршруту (додавання, редагування, видалення)
+    // одразу передається міні-карті - вона перемальовується з новими даними
+    watch: {
+        sortedStops(stops) {
+            this.routeMap.setStops(stops);
+        }
+    },
     async mounted() {
+        // Практикум 12: Canvas існує лише після того, як Vue відрендерив шаблон, тому карту
+        // створюємо тут, через $refs. routeMap не оголошено в data(), щоб Vue не робив його реактивним
+        this.routeMap = createRouteMap(this.$refs.routeCanvas);
+        this.routeMap.setStops([]);
+        this.mapPlaying = this.routeMap.isPlaying();
+
         // Крок 11: зрозуміле повідомлення, якщо базу не вдалося відкрити
         try {
             await openDB();
@@ -662,6 +676,376 @@ const routeApp = Vue.createApp({
             if (input.validity.patternMismatch) {
                 input.setCustomValidity(message);
             }
+        },
+        // Практикум 12, крок 7: кнопка старт/стоп анімації міні-карти
+        toggleMap() {
+            if (this.routeMap.isPlaying()) {
+                this.routeMap.pause();
+            } else {
+                this.routeMap.play();
+            }
+            this.mapPlaying = this.routeMap.isPlaying();
+        }
+    },
+    // Практикум 12, крок 8: якщо застосунок демонтують, цикл анімації зупиняється
+    unmounted() {
+        this.routeMap.destroy();
+    }
+});
+// Монтування перенесено в кінець файлу (блок практикуму 12): mounted() використовує
+// константи міні-карти, які мають бути оголошені до запуску застосунку
+
+// ===================== Практикум 12: міні-карта маршруту на Canvas =====================
+
+// Крок 1: за варіантом 10 обрано Canvas - кількість зупинок наперед невідома,
+// а лінію маршруту й точки неможливо зібрати з готових DOM-елементів.
+
+// Логічний розмір поверхні малювання - збігається з атрибутами width/height у розмітці
+const MAP_WIDTH = 640;
+const MAP_HEIGHT = 260;
+const MAP_PADDING_X = 60;      // відступ крайніх зупинок від країв полотна
+const MAP_ROW_TOP = 100;       // висота «верхніх» зупинок ламаної
+const MAP_ROW_BOTTOM = 170;    // висота «нижніх» зупинок ламаної
+const ROUTE_DRAW_SPEED = 260;  // швидкість «прокладання» лінії маршруту, px/с
+const MARKER_SPEED = 90;       // швидкість маркера-мандрівника, px/с
+const MAX_FRAME_TIME = 0.05;   // найбільший крок часу (с), щоб після паузи маркер не «стрибав»
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Палітра узгоджена з рештою сторінки (style.css)
+const MAP_COLORS = {
+    grid: 'rgba(38, 70, 83, 0.08)',
+    routeGhost: 'rgba(38, 70, 83, 0.25)',
+    route: '#1f7a6f',
+    point: '#1f7a6f',
+    pointPending: '#9bb8b3',
+    pointText: '#ffffff',
+    label: '#264653',
+    dates: '#4a5a60',
+    marker: '#e9c46a',
+    markerStroke: '#b5462a'
+};
+
+// Кількість днів зупинки: дати розбираються як UTC, щоб часовий пояс не зсунув результат
+const stayDays = stop => Math.round((Date.parse(stop.dateTo) - Date.parse(stop.dateFrom)) / DAY_MS) + 1;
+
+// Короткий запис дати для підпису на карті: 'YYYY-MM-DD' -> 'DD.MM'
+const shortDate = isoDate => isoDate.split('-').reverse().slice(0, 2).join('.');
+
+// «Підпис» маршруту: змінюється лише тоді, коли змінився склад, порядок чи дати зупинок,
+// але не тоді, коли відредаговано лише нотатки
+const routeSignature = stops =>
+    stops.map(stop => `${stop.id}|${stop.city}|${stop.dateFrom}|${stop.dateTo}`).join(';');
+
+/**
+ * Крок 4: перетворення масиву зупинок (уже відсортованого за dateFrom) на точки карти.
+ * Зупинки розташовуються рівномірно по горизонталі в порядку відвідування, а по вертикалі
+ * чергуються, утворюючи ламану. Радіус точки залежить від тривалості зупинки (1-8+ днів).
+ */
+function toMapPoints(stops) {
+    const step = stops.length > 1 ? (MAP_WIDTH - 2 * MAP_PADDING_X) / (stops.length - 1) : 0;
+
+    return stops.map((stop, index) => {
+        const isTop = index % 2 === 0;
+        return {
+            x: stops.length > 1 ? MAP_PADDING_X + index * step : MAP_WIDTH / 2,
+            y: stops.length > 1 ? (isTop ? MAP_ROW_TOP : MAP_ROW_BOTTOM) : (MAP_ROW_TOP + MAP_ROW_BOTTOM) / 2,
+            radius: 8 + Math.min(stayDays(stop), 8),
+            number: index + 1,
+            city: stop.city,
+            dates: `${shortDate(stop.dateFrom)}–${shortDate(stop.dateTo)}`,
+            isTop,
+            // Ширина, до якої стискається підпис, щоб він не наліз на сусідній підпис того ж ряду
+            labelWidth: stops.length > 1 ? Math.min(150, 2 * step - 10) : 200
+        };
+    });
+}
+
+// Довжини відрізків ламаної та відстань від початку маршруту до кожної точки
+function measureRoute(points) {
+    const offsets = [0];
+    for (let i = 1; i < points.length; i++) {
+        const dx = points[i].x - points[i - 1].x;
+        const dy = points[i].y - points[i - 1].y;
+        offsets.push(offsets[i - 1] + Math.hypot(dx, dy));
+    }
+    return { offsets, total: offsets[offsets.length - 1] || 0 };
+}
+
+// Координати точки на ламаній на відстані distance від першої зупинки
+function pointAtDistance(points, offsets, distance) {
+    for (let i = 1; i < points.length; i++) {
+        if (distance <= offsets[i]) {
+            const t = (distance - offsets[i - 1]) / (offsets[i] - offsets[i - 1]);
+            return {
+                x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+                y: points[i - 1].y + (points[i].y - points[i - 1].y) * t
+            };
         }
     }
-}).mount('#trip-route');
+    return points[points.length - 1];
+}
+
+/**
+ * Міні-карта маршруту на Canvas.
+ * Кроки 3, 5, 7, 8: отримує 2D-контекст, веде цикл requestAnimationFrame
+ * (спершу лінія маршруту «прокладається» від першої зупинки до останньої, потім уздовж неї
+ * безперервно рухається маркер-мандрівник), дозволяє зупиняти й запускати анімацію
+ * і скасовує кадр через cancelAnimationFrame, коли анімація не потрібна.
+ * Повертає об'єкт з методами setStops, play, pause, isPlaying, destroy.
+ */
+function createRouteMap(canvas) {
+    // Крок 3: 2D-контекст. Буфер полотна збільшується відповідно до щільності пікселів екрана,
+    // а ctx.scale дає змогу й далі малювати в логічних координатах 640×260 - так текст не розмитий
+    const ctx = canvas.getContext('2d');
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = MAP_WIDTH * pixelRatio;
+    canvas.height = MAP_HEIGHT * pixelRatio;
+    ctx.scale(pixelRatio, pixelRatio);
+
+    // Користувачам, які вимкнули анімації в системі, карта показується одразу статичною
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let stops = [];
+    let points = [];
+    let route = { offsets: [0], total: 0 };
+    let signature = '';
+    let drawnLength = 0;       // яку частину маршруту вже «прокладено», px
+    let markerDistance = 0;    // де зараз маркер-мандрівник, px від першої зупинки
+    let wantsToPlay = !reduceMotion; // бажання користувача (кнопка старт/стоп)
+    let isVisible = true;      // чи видно полотно на екрані
+    let frameId = null;        // id запланованого кадру для cancelAnimationFrame
+    let lastTime = null;       // мітка часу попереднього кадру
+
+    // ---------- Крок 4: малювання поточного стану ----------
+
+    // Легка «картографічна» сітка на тлі
+    function drawGrid() {
+        ctx.strokeStyle = MAP_COLORS.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 20; x < MAP_WIDTH; x += 40) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, MAP_HEIGHT);
+        }
+        for (let y = 20; y < MAP_HEIGHT; y += 40) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(MAP_WIDTH, y);
+        }
+        ctx.stroke();
+    }
+
+    // Зведення над картою: кількість зупинок і загальна тривалість подорожі
+    function drawSummary() {
+        const firstDate = stops[0].dateFrom;
+        const lastDate = stops.reduce((max, stop) => (stop.dateTo > max ? stop.dateTo : max), stops[0].dateTo);
+        const totalDays = stayDays({ dateFrom: firstDate, dateTo: lastDate });
+
+        ctx.fillStyle = MAP_COLORS.label;
+        ctx.font = '600 13px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(`Зупинок: ${stops.length} · Днів у дорозі: ${totalDays}`, 16, 24);
+    }
+
+    // Ламана від першої до останньої зупинки; якщо limit задано - лише перші limit px
+    function strokeRoute(limit) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            if (route.offsets[i] <= limit) {
+                ctx.lineTo(points[i].x, points[i].y);
+            } else {
+                const end = pointAtDistance(points, route.offsets, limit);
+                ctx.lineTo(end.x, end.y);
+                break;
+            }
+        }
+        ctx.stroke();
+    }
+
+    function drawRoute() {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Увесь маршрут блідим пунктиром - «план» подорожі
+        ctx.save();
+        ctx.setLineDash([6, 8]);
+        ctx.strokeStyle = MAP_COLORS.routeGhost;
+        ctx.lineWidth = 2;
+        strokeRoute(route.total);
+        ctx.restore();
+
+        // Поверх нього - суцільна лінія, яка «прокладається» анімацією
+        ctx.strokeStyle = MAP_COLORS.route;
+        ctx.lineWidth = 4;
+        strokeRoute(drawnLength);
+    }
+
+    function drawPoint(point, index) {
+        // Зупинка «з'являється», щойно до неї дійшла лінія маршруту
+        const reached = route.offsets[index] <= drawnLength;
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
+        ctx.fillStyle = reached ? MAP_COLORS.point : MAP_COLORS.pointPending;
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Номер зупинки - як у мітці «Зупинка N» на картці під картою
+        ctx.fillStyle = MAP_COLORS.pointText;
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(point.number), point.x, point.y + 1);
+
+        // Підпис: над верхніми точками і під нижніми, щоб не перетинати лінію
+        const cityY = point.isTop ? point.y - point.radius - 22 : point.y + point.radius + 18;
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = MAP_COLORS.label;
+        ctx.font = '600 13px system-ui, sans-serif';
+        ctx.fillText(point.city, point.x, cityY, point.labelWidth);
+        ctx.fillStyle = MAP_COLORS.dates;
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.fillText(point.dates, point.x, cityY + 14, point.labelWidth);
+    }
+
+    function drawMarker() {
+        const position = pointAtDistance(points, route.offsets, markerDistance);
+        ctx.beginPath();
+        ctx.arc(position.x, position.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = MAP_COLORS.marker;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = MAP_COLORS.markerStroke;
+        ctx.stroke();
+    }
+
+    function drawEmpty() {
+        ctx.fillStyle = MAP_COLORS.dates;
+        ctx.font = 'italic 15px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Додайте зупинки, щоб побачити маршрут на карті', MAP_WIDTH / 2, MAP_HEIGHT / 2);
+    }
+
+    // Один кадр: очищення полотна і перемальовування всього стану з нуля
+    function render() {
+        ctx.clearRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+        drawGrid();
+
+        if (points.length === 0) {
+            drawEmpty();
+            return;
+        }
+
+        drawSummary();
+        if (points.length > 1) {
+            drawRoute();
+        }
+
+        // Маркер рушає лише тоді, коли весь маршрут уже прокладено. Його малюємо до точок,
+        // тож він «проходить під» зупинками і не закриває їхні номери
+        if (points.length > 1 && drawnLength >= route.total) {
+            drawMarker();
+        }
+        points.forEach(drawPoint);
+    }
+
+    // ---------- Крок 5: цикл анімації ----------
+
+    // Анімувати є що лише тоді, коли на карті хоча б дві зупинки (є лінія)
+    const hasMotion = () => points.length > 1;
+
+    // Оновлення стану на dt секунд
+    function update(dt) {
+        if (drawnLength < route.total) {
+            drawnLength = Math.min(route.total, drawnLength + ROUTE_DRAW_SPEED * dt);
+        } else {
+            markerDistance = (markerDistance + MARKER_SPEED * dt) % route.total;
+        }
+    }
+
+    function frame(timestamp) {
+        // Час між кадрами обмежено: якщо вкладка була неактивна, маркер не перескочить уперед
+        const dt = lastTime === null ? 0 : Math.min((timestamp - lastTime) / 1000, MAX_FRAME_TIME);
+        lastTime = timestamp;
+
+        update(dt);   // 1) оновити стан
+        render();     // 2) clearRect + перемалювати кадр
+
+        frameId = requestAnimationFrame(frame); // 3) запланувати наступний кадр
+    }
+
+    // ---------- Крок 8: запуск і коректне завершення циклу ----------
+
+    // Цикл працює лише тоді, коли користувач його не зупинив, полотно видно і є що анімувати
+    function syncLoop() {
+        const shouldRun = wantsToPlay && isVisible && hasMotion();
+
+        if (shouldRun && frameId === null) {
+            lastTime = null;
+            frameId = requestAnimationFrame(frame);
+        } else if (!shouldRun && frameId !== null) {
+            cancelAnimationFrame(frameId);
+            frameId = null;
+        }
+    }
+
+    // Коли карта прокручена за межі екрана, кадри не малюються взагалі
+    const observer = new IntersectionObserver(entries => {
+        isVisible = entries[0].isIntersecting;
+        syncLoop();
+    });
+    observer.observe(canvas);
+
+    // Текстовий опис карти для читачів екрана (Canvas сам по собі для них «порожній»)
+    function updateLabel() {
+        canvas.setAttribute('aria-label', stops.length > 0
+            ? `Міні-карта маршруту: ${stops.map(stop => stop.city).join(' → ')}`
+            : 'Міні-карта маршруту: зупинок поки немає');
+    }
+
+    return {
+        // Крок 6: нові дані маршруту. Якщо маршрут справді змінився і анімація відтворюється,
+        // лінія прокладається заново, щоб зміну було видно; на паузі карта одразу показується повністю
+        setStops(newStops) {
+            const newSignature = routeSignature(newStops);
+            const routeChanged = newSignature !== signature;
+
+            stops = newStops;
+            points = toMapPoints(stops);
+            route = measureRoute(points);
+            signature = newSignature;
+
+            if (routeChanged) {
+                drawnLength = wantsToPlay ? 0 : route.total;
+                markerDistance = 0;
+            }
+
+            updateLabel();
+            render();
+            syncLoop();
+        },
+        // Крок 7: керування анімацією з кнопки
+        play() {
+            wantsToPlay = true;
+            syncLoop();
+        },
+        pause() {
+            wantsToPlay = false;
+            syncLoop();
+        },
+        isPlaying: () => wantsToPlay,
+        // Повне завершення: скасувати кадр і перестати стежити за видимістю полотна
+        destroy() {
+            wantsToPlay = false;
+            syncLoop();
+            observer.disconnect();
+        }
+    };
+}
+
+// Запуск застосунку маршруту (практикум 11) - після оголошення всіх констант міні-карти
+routeApp.mount('#trip-route');

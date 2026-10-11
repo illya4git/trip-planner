@@ -527,3 +527,28 @@ footer > p {
     padding: 6px 14px;
     font-size: .9rem;
 }
+
+/* ===================== Практикум 12 ===================== */
+
+.route-map {
+    display: grid;
+    gap: 12px;
+    margin: 24px 0 0;
+}
+
+.route-map > figcaption {
+    font-weight: bold;
+    color: #264653;
+}
+
+/* Полотно масштабується за шириною колонки, пропорції 640×260 зберігаються завдяки height: auto */
+.route-map__canvas {
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+    background: #fffdf7;
+    border: 1px solid #e9c46a;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
