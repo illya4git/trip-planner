@@ -194,15 +194,19 @@ function setupTripForm(form, onSubmit) {
 
 // Крок 3: базова адреса ендпоінта винесена в константу на початку блоку.
 // REST Countries v3.1 з методички більше не працює без ключа (версію виведено з експлуатації),
-// тому використано відкритий аналог countries.dev з тим самим ендпоінтом /name/{name}.
-const COUNTRIES_API_URL = 'https://countries.dev/name/';
+// тому спершу використовувався відкритий аналог countries.dev з ендпоінтом /name/{name}.
+// Практикум 14, крок 9: запит іде на власний локальний сервер (server/server.js) - ендпоінт
+// /api/countries з пошуком за назвою в query-параметрі name. Адреса відносна, бо сторінку
+// роздає той самий сервер (один origin, без CORS). Решта коду запиту й рендеру - без змін.
+const COUNTRIES_API_URL = '/api/countries?name=';
 const DEFAULT_COUNTRY = 'Austria';
 
 // Повідомлення для користувача (технічні деталі йдуть лише в консоль)
 const COUNTRY_NOT_FOUND_MESSAGE = 'Країну не знайдено, перевірте написання';
 const COUNTRY_SERVER_ERROR_MESSAGE = 'Сервіс довідки тимчасово недоступний. Спробуйте пізніше.';
+// Практикум 14: дані тепер віддає локальний сервер, тож мережевий збій означає, що він не запущений
 const COUNTRY_NETWORK_ERROR_MESSAGE =
-    'Не вдалося завантажити дані про країну. Перевірте з\'єднання з інтернетом і натисніть «Оновити».';
+    'Не вдалося з\'єднатися з сервером довідки. Переконайтеся, що сервер запущено, і натисніть «Оновити».';
 
 // Останній виконаний запит - його повторює кнопка «Оновити».
 // Практикум 13: змінна лишилася поза сторінкою, тож після повернення на #/countries
@@ -212,6 +216,7 @@ let lastCountryQuery = DEFAULT_COUNTRY;
 // Крок 6: зіставлення об'єкта відповіді API з формою власного об'єкта застосунку.
 // На відміну від REST Countries v3.1, countries.dev повертає «пласку» структуру:
 // name і capital - звичайні рядки, а не вкладений об'єкт і масив.
+// Практикум 14: локальний сервер віддає записи в тій самій формі, тому функція не змінилася.
 const toCountry = apiCountry => ({
     name: apiCountry.name,
     // У деяких територій (напр. Антарктида) столиці немає
@@ -285,10 +290,10 @@ function setupCountryLookup(section) {
 
     /**
      * Кроки 2-8: завантаження даних про країну за назвою.
-     * API: countries.dev, ендпоінт /name/{name} (без ключа, з CORS) - https://countries.dev/docs/api/name
-     * Відкритий аналог REST Countries (https://restcountries.com/v3.1/name/{name}).
-     * Пошук частковий і без урахування регістру: за запитом "ger" повертаються Germany, Algeria, Niger тощо.
-     * На невідому назву сервіс відповідає кодом 404 з текстом "Country not found".
+     * Практикум 14: API - локальний сервер (server/server.js), ендпоінт GET /api/countries?name={name}.
+     * Він повторює поведінку countries.dev (https://countries.dev/docs/api/name), що використовувався
+     * в практикумі 9: пошук частковий і без урахування регістру (за запитом "ia" - Austria, Czechia,
+     * Slovakia, Croatia), а на невідому назву сервер відповідає кодом 404 з JSON { error: "Країну не знайдено" }.
      */
     async function loadCountry(query) {
         lastCountryQuery = query;
@@ -301,7 +306,7 @@ function setupCountryLookup(section) {
 
             // Крок 4: fetch не вважає 404/500 помилкою, тому статус перевіряємо вручну
             if (!response.ok) {
-                const error = new Error(`countries.dev відповів кодом ${response.status}`);
+                const error = new Error(`Сервер довідки відповів кодом ${response.status}`);
                 error.status = response.status;
                 throw error;
             }
@@ -312,7 +317,7 @@ function setupCountryLookup(section) {
 
             // Додатковий захист: порожній масив теж означає «нічого не знайдено»
             if (!Array.isArray(data) || data.length === 0) {
-                const error = new Error('countries.dev повернув порожній результат');
+                const error = new Error('Сервер довідки повернув порожній результат');
                 error.status = 404;
                 throw error;
             }

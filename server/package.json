@@ -1,0 +1,16 @@
+{
+  "name": "trip-planner-server",
+  "version": "1.0.0",
+  "description": "Локальний сервер планувальника подорожей: API довідки про країни і статичні файли застосунку (практикум 14)",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "Ілля Кліменко",
+  "license": "ISC",
+  "dependencies": {
+    "express": "5.2.1"
+  }
+}
