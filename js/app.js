@@ -89,7 +89,10 @@ const DEFAULT_TRIPS = [
 // Універсальна функція рендеру масиву (практикум 7, узагальнена в практикумі 9).
 // Після практикуму 10 нею користується лише довідка про країни.
 function renderList(container, items, createItem) {
-    container.innerHTML = ''; // Очищення контейнера
+    // Практикум 15, крок 5: очищення через replaceChildren() замість innerHTML = ''.
+    // Рядок був безпечним (порожній рядок, без даних), але тепер у застосунку не лишилося
+    // жодного запису в innerHTML, тож майбутній пошук «innerHTML» одразу покаже нове вразливе місце
+    container.replaceChildren();
 
     items.forEach((item, index) => {
         container.append(createItem(item, index));
@@ -387,7 +390,8 @@ function setupCountryLookup(section) {
 // Практикум 13: подорож (раніше жила лише в data() Vue-застосунку) теж зберігається в IndexedDB:
 // { id, destination, days, budget, image, statusText, statusClass } - як у DEFAULT_TRIPS.
 
-// Ключ, під яким маршрут зберігався в localStorage (кроки 2-4), і прапорець міграції (крок 8)
+// Ключ, під яким маршрут зберігався в localStorage (кроки 2-4), і прапорець міграції (крок 8).
+// Практикум 15, крок 6: після міграції запис tripStops видаляється - див. migrateFromLocalStorage
 const STOPS_STORAGE_KEY = 'tripStops';
 const MIGRATION_FLAG_KEY = 'tripStopsMigrated';
 
@@ -563,11 +567,18 @@ function updateTrip(trip) {
  * Крок 8: одноразове перенесення маршруту з localStorage в IndexedDB.
  * Дані переносяться, лише якщо сховище tripStops порожнє, а в localStorage щось є.
  * Після першого запуску ставиться прапорець tripStopsMigrated=true, і перевірка більше не виконується.
- * Старий запис у localStorage не видаляється - він лишається резервною копією.
  * Повертає кількість перенесених зупинок.
+ *
+ * Практикум 15, крок 6: у практикумі 11 старий запис tripStops лишався в localStorage
+ * «резервною копією». Насправді це була застаріла копія маршруту разом із нотатками: зміни
+ * й видалення в застосунку її не торкалися, тож видалена користувачем нотатка (напр., з номером
+ * документа) назавжди лишалася у відкритому вигляді, доступному будь-якому скрипту сторінки.
+ * Тепер запис видаляється одразу після успішної міграції, а в браузерах, де міграцію вже
+ * виконано раніше, - під час наступного запуску.
  */
 async function migrateFromLocalStorage() {
     if (localStorage.getItem(MIGRATION_FLAG_KEY) === 'true') {
+        localStorage.removeItem(STOPS_STORAGE_KEY);
         return 0;
     }
 
@@ -583,8 +594,10 @@ async function migrateFromLocalStorage() {
         }
     }
 
-    // Прапорець ставимо лише після успішного перенесення всіх записів
+    // Прапорець ставимо лише після успішного перенесення всіх записів; лише тоді ж видаляємо
+    // старий запис - якщо перенесення перерветься помилкою, дані в localStorage не загубляться
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+    localStorage.removeItem(STOPS_STORAGE_KEY);
     return migratedCount;
 }
 
@@ -1278,7 +1291,7 @@ function clearView() {
         currentApp.unmount();
         currentApp = null;
     }
-    appContainer.innerHTML = '';
+    appContainer.replaceChildren(); // практикум 15: без innerHTML (див. renderList)
 }
 
 // Сторінка на Vue: новий застосунок із компонентом сторінки та даними з IndexedDB у props

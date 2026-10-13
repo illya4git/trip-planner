@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Планувальник подорожей</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Практикум 10, крок 2: Vue 3, глобальна збірка з CDN (без npm і збірки) -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
+    <!-- Практикум 10, крок 2: Vue 3, глобальна збірка з CDN (без npm і збірки).
+         Практикум 15: версію зафіксовано точно (раніше vue@3 - «будь-яка остання 3.x»: CDN міг
+         віддати щойно опубліковану, ще неперевірену версію). Атрибут integrity містить SHA-384
+         файлу: якщо CDN поверне інший вміст, браузер не виконає скрипт. crossorigin потрібен,
+         щоб браузер міг перевірити цілісність файлу з іншого домену. Замість dev-збірки -
+         production-збірка vue.global.prod.js (без попереджень розробника, у ~3 рази менша) -->
+    <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"
+            integrity="sha384-EAm39cvdifYiZjQQxCxStLasDodQMYokBrN5XPuJ7aC/JsQ4vyEUCy/+6hXpcBOW"
+            crossorigin="anonymous" defer></script>
 </head>
 <body>
 <header>
@@ -148,7 +155,13 @@
             <div class="form-field">
                 <label for="stop-notes">Нотатки</label>
                 <textarea id="stop-notes" v-model="form.notes" rows="3" maxlength="500"
+                          aria-describedby="stop-notes-hint"
                           placeholder="Наприклад, екскурсія Вавелем"></textarea>
+                <!-- Практикум 15, крок 6: нотатки зберігаються в браузері без шифрування -->
+                <p id="stop-notes-hint" class="form-hint">
+                    Нотатки зберігаються лише в цьому браузері й не шифруються. Не записуйте сюди
+                    номери паспортів, банківських карток чи коди бронювань.
+                </p>
             </div>
             <div class="form-actions">
                 <button type="submit" :disabled="!storageReady || saving">
@@ -186,6 +199,8 @@
                     <!-- Практикум 13: назва зупинки веде на сторінку #/trip/:id/stop/:stopId -->
                     <h3><a class="card__link" :href="stopLink(stop)" data-link>{{ stop.city }}, {{ stop.country }}</a></h3>
                     <p>{{ formatDate(stop.dateFrom) }} – {{ formatDate(stop.dateTo) }}</p>
+                    <!-- Практикум 15, кроки 2-4: інтерполяція {{ }} записує значення як текст (як textContent),
+                         тож HTML у нотатках не виконується. Не замінювати на v-html: саме він став би XSS -->
                     <p v-if="stop.notes" class="stop-notes">{{ stop.notes }}</p>
                     <div class="stop-actions">
                         <button type="button" @click="startEdit(stop)">Редагувати</button>

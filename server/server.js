@@ -18,6 +18,45 @@ const CLIENT_DIR = path.join(__dirname, '..');
 
 const app = express();
 
+// ---------- Практикум 15: заголовки безпеки ----------
+
+// Заголовок X-Powered-By: Express лише підказує атакувальнику, яке ПЗ шукати у базах вразливостей
+app.disable('x-powered-by');
+
+/**
+ * Content Security Policy - другий рубіж захисту від XSS. Навіть якщо в майбутньому хтось
+ * вставить дані користувача через innerHTML чи v-html, браузер не виконає вбудовані обробники
+ * (onerror="...") та скрипти з чужих доменів - лише файли з цього сервера й Vue з unpkg.
+ *   'unsafe-eval' - вимушений виняток: Vue з CDN компілює шаблони з <template> прямо в браузері
+ *                   через new Function. Прибрати його можна лише разом із переходом на збірку
+ *                   з попередньо скомпільованими шаблонами (Vite + npm).
+ *   img-src       - власні зображення та прапори з flagcdn.com (довідка про країни)
+ *   connect-src   - fetch лише до власного API
+ *   frame-ancestors 'none' - сторінку не можна вбудувати в чужий <iframe> (захист від clickjacking)
+ */
+const CONTENT_SECURITY_POLICY = [
+    "default-src 'self'",
+    "script-src 'self' https://unpkg.com 'unsafe-eval'",
+    "style-src 'self'",
+    "img-src 'self' https://flagcdn.com",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+].join('; ');
+
+app.use((req, res, next) => {
+    res.set({
+        'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+        // Браузер не «вгадує» тип файлу всупереч Content-Type (напр., не виконає JSON як скрипт)
+        'X-Content-Type-Options': 'nosniff',
+        // Адреса сторінки (з #/trip/...) не передається іншим сайтам, лише origin
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
+    });
+    next();
+});
+
 // ---------- API ----------
 
 /**

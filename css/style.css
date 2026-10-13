@@ -647,3 +647,12 @@ nav > a[aria-current="page"] {
     background: rgba(255, 255, 255, .6);
     border-radius: 4px;
 }
+
+/* ===================== Практикум 15 ===================== */
+
+/* Підказка під полем форми. #4a5a60 на тлі #ffeaa7..#81ecec - від 5.18:1 до 6.02:1 (WCAG AA) */
+.form-hint {
+    margin: 0;
+    font-size: .9rem;
+    color: #4a5a60;
+}
